@@ -100,6 +100,8 @@ That's it. Frontend at `localhost:3000`, API at `localhost:8000`. Start a sessio
 
 `pnpm dev` runs the preflight check first — it catches the common setup gotchas (wrong Node/Python version, missing venv, missing or placeholder `.env`, ports already taken) and tells you exactly how to fix each one. Run it standalone any time with `pnpm run doctor`.
 
+Want data to look at immediately? `services/api/.venv/bin/python services/api/scripts/seed_demo.py` writes a couple of synthetic sessions — a real rosbag2 `metadata.yaml` plus tiny synthetic splits — to your bucket and rebuilds the catalog, so the Dashboard, Catalog, and Bucket views are populated on first load. It needs no download and no second key.
+
 ### Supported local environments
 
 Local scripts run on macOS, Linux, and WSL2 — native Windows isn't supported
