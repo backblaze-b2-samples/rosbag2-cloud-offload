@@ -82,6 +82,27 @@ def test_boto3_only_in_repo():
     assert violations == [], "boto3 boundary violations:\n" + "\n".join(violations)
 
 
+def test_pyarrow_only_in_repo():
+    """Verify pyarrow is only imported in app/repo/ (Parquet catalog containment).
+
+    Mirrors the boto3 boundary: third-party data-access clients stay in the repo
+    layer, so the rest of the app depends on plain dicts, not on pyarrow types.
+    """
+    violations = []
+    for layer in LAYER_ORDER:
+        if layer == "repo":
+            continue
+        layer_dir = APP_ROOT / layer
+        if not layer_dir.exists():
+            continue
+        for pyfile in _get_python_files(layer_dir):
+            for imp in _get_imports(pyfile):
+                if imp == "pyarrow" or imp.startswith("pyarrow."):
+                    rel = pyfile.relative_to(APP_ROOT.parent)
+                    violations.append(f"{rel}: pyarrow imported outside repo/")
+    assert violations == [], "pyarrow boundary violations:\n" + "\n".join(violations)
+
+
 def test_api_app_python_file_size_limit():
     """Verify authored Python under services/api/app stays within 300 lines."""
     violations = []

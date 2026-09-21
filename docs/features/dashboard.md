@@ -1,62 +1,52 @@
-<!-- last_verified: 2026-07-28 -->
-# Feature: Dashboard
+<!-- last_verified: 2026-09-21 -->
+# Feature: Offload Dashboard
 
 ## Purpose
-Provide an at-a-glance overview of file storage usage and recent upload activity.
+Give a fleet-level overview of what has been offloaded to Backblaze B2: how many
+recording sessions exist, across how many robots, how many objects are in the
+bucket, and how much storage is used — plus the most recent sessions, each
+linking straight to its detail. It is the landing screen (`/`).
 
 ## Used By
-- UI: `/` page (dashboard home)
-- API: `GET /files/stats`, `GET /files`, `GET /files/stats/activity`
+- UI: `/` (Offload Dashboard)
+- API: `GET /sessions` (session + robot counts, recent list), `GET /files/stats` (bucket object count and storage used)
 
 ## Core Functions
-- `apps/web/src/components/dashboard/stats-cards.tsx` — 4 stat cards, plus the on-screen loading notice while the bucket scan runs
-- `apps/web/src/components/dashboard/recent-uploads-table.tsx` — last 10 uploads
-- `apps/web/src/components/dashboard/upload-chart.tsx` — bar chart of uploads per day
-- `apps/web/src/lib/api-client.ts` — `getFileStats()`, `getFiles()`, `getUploadActivity()`
-- `services/api/app/runtime/files.py` — `GET /files/stats` handler
-- `services/api/app/service/files.py` — `get_stats()` business logic
-- `services/api/app/repo/b2_client.py` — `get_upload_stats()` data access
-- `services/api/app/repo/list_cache.py` — the shared bucket listing both `/files/stats` and `/files` read, so the dashboard and the file browser never scan twice
-- `apps/web/src/components/common/loading-notice.tsx` — visible, escalating wait copy
-
-## Canonical Files
-- Dashboard page layout: `apps/web/src/components/dashboard/stats-cards.tsx`
-- Stats service logic: `services/api/app/service/files.py`
+- `apps/web/src/app/page.tsx` — the dashboard screen (stat cards + recent sessions table)
+- `apps/web/src/lib/queries.ts` — `useSessions()`, `useFileStats()`
+- `services/api/app/service/sessions.py` — session discovery under `bags/`
+- `services/api/app/service/files.py` — `get_stats()` over the bucket
 
 ## Inputs
-- None (dashboard loads data automatically)
+- Session list from `GET /sessions`
+- Bucket aggregate figures from `GET /files/stats` (served from the shared bucket listing)
 
 ## Outputs
-- `GET /files/stats` → `UploadStats` (total_files, total_size_bytes, total_size_human, uploads_today, total_downloads)
-- `GET /files` (limit 10) → `FileMetadata[]` for recent uploads table (sorted newest-first)
-- `GET /files/stats/activity?days=7` → `DailyUploadCount[]` for chart (server-side aggregation)
+- Stat cards: Sessions, Robots (distinct), Objects in bucket, Storage used
+- Recent sessions table: robot/session (linked), ROS distro, split count, stored size, created time
 
 ## Flow
-- Page loads → three parallel API calls (stats, recent files, upload activity), all served from one cached bucket listing
-- Stats needed ~8.3s to replace the skeletons on a 16k-object bucket, so: the API warms that listing at startup and serves it stale-while-revalidate (only the very first scan after boot can block), and the cards state the wait in words while it runs instead of showing four silent placeholders
-- Stats cards display total files, storage used, uploads today, total downloads
-- Upload chart displays server-aggregated daily counts for last 7 days as bar chart after activity data is known
-- Recent uploads table shows last 10 files with filename, size, type, date, status badge. Each filename is a link to `/files?preview=<key>`, which opens that file's preview in the browser — the rows used to be inert text with no role, tabindex or handler, so the "click a file to preview it" gesture `/files` teaches did nothing here
+- On load, the dashboard fetches the session list and bucket stats in parallel
+- Stat cards derive session and robot counts client-side from the session list; object count and storage come from the bucket stats
+- The recent-sessions table shows the newest sessions; each row links to `/catalog/[robot]/[session]`
 
 ## Edge Cases
-- API unavailable → error states with retry where supported; activity chart does not show a false zero state while loading
-- No files uploaded → empty chart message, empty table message
-- Large file count → stats endpoint paginates through all objects using `ContinuationToken`; the result is cached, so the cost is paid once (at startup) rather than per page view
-- Bucket changed by something other than this app → numbers can lag by up to `LIST_CACHE_TTL_SECONDS` (default 300s). The app's own uploads/deletes invalidate the cache, so they are never stale
+- No sessions yet → empty state prompting to start one and offload
+- Stats fetch fails → inline `ErrorState` with Retry, never "0 objects" presented as truth
+- Bucket listing cold on first load → cards show a brief loading state
 
 ## UX States
-- Loading: an on-screen "Loading bucket stats…" notice above the cards (escalating at 4s and 12s), with skeleton placeholders for cards, table, and upload activity chart
-- Empty: "No files uploaded yet" / "No upload data available yet"
-- Loaded: populated cards, chart, table
+- Loading: skeleton stat values and table rows
+- Empty: "No sessions yet" with guidance
+- Error: inline error with Retry
 
 ## Verification
-- Test files: `services/api/tests/test_upload_activity.py`, `services/api/tests/test_recent_files.py`, `services/api/tests/test_list_cache.py`, `apps/web/src/lib/loading-progress.test.ts`
-- Required cases: stats with files, stats with empty bucket, API error fallback, cached listing reused across stats and listing calls, loading copy escalating at its thresholds
+- Test files: `services/api/tests/test_download_stats.py`, `test_recent_files.py`
 - Focused verify command: `pnpm test:api`
 - Default pre-PR verify command: `pnpm verify`
-- Full local verify command: `pnpm verify:full` when the E2E/live prerequisites in [Verification](../verification.md#non-live-verification) are available
-- Pass criteria: focused tests and `pnpm verify` green; explain any skipped `pnpm verify:full` prerequisites
+- Pass criteria: with at least one session offloaded, the cards show non-zero counts and the recent table links resolve to session detail
 
 ## Related Docs
 - [ARCHITECTURE.md](../../ARCHITECTURE.md)
+- [Session Catalog & Search](session-catalog.md)
 - [App Workflows](../app-workflows.md)

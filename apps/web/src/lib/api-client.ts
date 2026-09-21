@@ -1,14 +1,27 @@
 import type {
+  CatalogRows,
+  CatalogSummary,
   DailyUploadCount,
   DeleteFileResponse,
+  DeleteResult,
   FileMetadata,
   FileMetadataDetail,
   FileUploadResponse,
   FileUrlResponse,
   HealthStatus,
+  OffloadPlan,
+  OffloadRequest,
   PresignUploadResponse,
+  PresignedUrl,
+  ReplayManifest,
+  ReplayRequest,
+  Session,
+  SessionCreate,
+  SessionDetail,
+  SessionList,
+  SessionUpdate,
   UploadStats,
-} from "@vibe-coding-starter-kit/shared";
+} from "@rosbag2-cloud-offload/shared";
 
 import { API_CLIENT_ROUTES } from "./generated/api-routes";
 
@@ -334,6 +347,174 @@ function putFileToStorage(
 
     xhr.open(presign.method.toUpperCase(), presign.url);
     for (const [name, value] of Object.entries(presign.headers)) {
+      xhr.setRequestHeader(name, value);
+    }
+    xhr.send(file);
+  });
+}
+
+// --- sessions & catalog (rosbag2 offload domain) -------------------------
+// Session CRUD + run verbs (offload, describe, replay) and the Parquet catalog.
+// Path templates come from the generated registry; `{robot}`/`{session}` are
+// substituted here so a request never lands on a keyless URL.
+
+function fillSessionPath(template: string, robot: string, session: string): string {
+  return template
+    .replace("{robot}", encodeURIComponent(robot))
+    .replace("{session}", encodeURIComponent(session));
+}
+
+function toQuery(params: Record<string, string | undefined>): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== "") {
+      search.set(key, value);
+    }
+  }
+  const query = search.toString();
+  return query ? `?${query}` : "";
+}
+
+function jsonInit(method: string, body: unknown): RequestInit {
+  return {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  };
+}
+
+export interface SessionFilters {
+  robot?: string;
+  ros_distro?: string;
+  since?: string;
+  topic?: string;
+  // Index signature so a filter bag is a plain query record (toQuery consumes it).
+  [key: string]: string | undefined;
+}
+
+export async function listSessions(filters: SessionFilters = {}) {
+  return apiFetch<SessionList>(`${API_CLIENT_ROUTES.sessions.path}${toQuery(filters)}`);
+}
+
+export async function getSessionDetail(robot: string, session: string) {
+  return apiFetch<SessionDetail>(
+    fillSessionPath(API_CLIENT_ROUTES.sessionDetail.path, robot, session)
+  );
+}
+
+export async function createSession(payload: SessionCreate) {
+  return apiFetch<Session>(
+    API_CLIENT_ROUTES.sessionCreate.path,
+    jsonInit(API_CLIENT_ROUTES.sessionCreate.method.toUpperCase(), payload)
+  );
+}
+
+export async function updateSession(
+  robot: string,
+  session: string,
+  payload: SessionUpdate
+) {
+  return apiFetch<Session>(
+    fillSessionPath(API_CLIENT_ROUTES.sessionUpdate.path, robot, session),
+    jsonInit(API_CLIENT_ROUTES.sessionUpdate.method.toUpperCase(), payload)
+  );
+}
+
+export async function deleteSession(robot: string, session: string) {
+  return apiFetch<DeleteResult>(
+    fillSessionPath(API_CLIENT_ROUTES.sessionDelete.path, robot, session),
+    { method: API_CLIENT_ROUTES.sessionDelete.method.toUpperCase() }
+  );
+}
+
+export async function offloadSession(
+  robot: string,
+  session: string,
+  payload: OffloadRequest
+) {
+  return apiFetch<OffloadPlan>(
+    fillSessionPath(API_CLIENT_ROUTES.sessionOffload.path, robot, session),
+    jsonInit(API_CLIENT_ROUTES.sessionOffload.method.toUpperCase(), payload)
+  );
+}
+
+export async function describeSession(robot: string, session: string) {
+  return apiFetch<SessionDetail>(
+    fillSessionPath(API_CLIENT_ROUTES.sessionDescribe.path, robot, session),
+    { method: API_CLIENT_ROUTES.sessionDescribe.method.toUpperCase() }
+  );
+}
+
+export async function replaySession(
+  robot: string,
+  session: string,
+  payload: ReplayRequest = {}
+) {
+  return apiFetch<ReplayManifest>(
+    fillSessionPath(API_CLIENT_ROUTES.sessionReplay.path, robot, session),
+    jsonInit(API_CLIENT_ROUTES.sessionReplay.method.toUpperCase(), payload)
+  );
+}
+
+export async function getCatalog(filters: SessionFilters & { date?: string } = {}) {
+  return apiFetch<CatalogRows>(`${API_CLIENT_ROUTES.catalog.path}${toQuery(filters)}`);
+}
+
+export async function rebuildCatalog() {
+  return apiFetch<CatalogSummary>(API_CLIENT_ROUTES.catalogRebuild.path, {
+    method: API_CLIENT_ROUTES.catalogRebuild.method.toUpperCase(),
+  });
+}
+
+export async function getCatalogDownloadUrl() {
+  return apiFetch<PresignedUrl>(API_CLIENT_ROUTES.catalogDownload.path);
+}
+
+/**
+ * Offload one closed split: presign a PUT for it (scoped to the session's
+ * bags/<robot>/<session>/ prefix), then PUT the raw bytes directly to B2. The
+ * bytes never traverse the API — the same direct-to-B2 path the upload flow
+ * uses, so there is no Function payload ceiling on a multi-GB bag split.
+ */
+export async function uploadSplit(
+  robot: string,
+  session: string,
+  file: File,
+  onProgress?: (percent: number) => void
+): Promise<{ key: string; filename: string }> {
+  const plan = await offloadSession(robot, session, {
+    splits: [{ filename: file.name, size: file.size }],
+  });
+  const split = plan.splits[0];
+  await putToPresignedUrl(split.url, split.method, split.headers, file, onProgress);
+  return { key: split.key, filename: split.filename };
+}
+
+function putToPresignedUrl(
+  url: string,
+  method: string,
+  headers: Record<string, string>,
+  file: File,
+  onProgress?: (percent: number) => void
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.upload.addEventListener("progress", (e) => {
+      if (e.lengthComputable && onProgress) {
+        onProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    });
+    xhr.addEventListener("load", () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        reject(new ApiError(`Offload to storage failed (${xhr.status})`, xhr.status));
+      }
+    });
+    xhr.addEventListener("error", () => reject(storageNetworkError()));
+    xhr.addEventListener("abort", () => reject(new ApiError("Offload aborted", 0)));
+    xhr.open(method.toUpperCase(), url);
+    for (const [name, value] of Object.entries(headers)) {
       xhr.setRequestHeader(name, value);
     }
     xhr.send(file);

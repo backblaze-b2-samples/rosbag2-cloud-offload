@@ -1,85 +1,41 @@
 {
   "$schema": "../../scripts/gen/sample.schema.json",
   "schema_version": 1,
-  "name": "Vibe Coding Starter Kit",
-  "slug": "vibe-coding-starter-kit",
-  "package_scope": "@vibe-coding-starter-kit",
-  "purpose": "A well-engineered full-stack foundation — dashboard, drag-and-drop upload and a file browser — with Backblaze B2 storage already wired in, so builders skip the boilerplate loop.",
-  "tagline": "Stop wiring boilerplate and start building.",
-  "primary_entity": { "schema": "FileMetadata", "singular": "file", "plural": "files" },
+  "name": "Rosbag2 Cloud Offload",
+  "slug": "rosbag2-cloud-offload",
+  "package_scope": "@rosbag2-cloud-offload",
+  "purpose": "Stream ROS 2 rosbag2 recordings off the robot into Backblaze B2, describe them from rosbag2's own metadata, and catalog every session in Parquet so any recording can be found and replayed with ros2 bag play from a presigned B2 URL.",
+  "tagline": "Continuous rosbag2 offload, describe, and catalog on Backblaze B2 — bags off the robot, searchable and replayable.",
+  "primary_entity": { "schema": "Session", "singular": "session", "plural": "sessions" },
   "features": [
-    {
-      "title": "File Upload",
-      "route": "/upload",
-      "doc": "docs/features/file-upload.md",
-      "summary": "drag-and-drop upload with real-time progress",
-      "workflow_heading": "Upload Files"
-    },
-    {
-      "title": "File Browser",
-      "route": "/files",
-      "doc": "docs/features/file-browser.md",
-      "summary": "list, preview, download, delete files",
-      "workflow_heading": "Browse and Manage Files"
-    },
-    {
-      "title": "Dashboard",
-      "route": "/",
-      "doc": "docs/features/dashboard.md",
-      "summary": "stats cards, upload chart, recent uploads",
-      "workflow_heading": "View Dashboard"
-    },
-    {
-      "title": "Metadata Extraction",
-      "route": null,
-      "doc": "docs/features/metadata-extraction.md",
-      "summary": "image dimensions, EXIF, PDF info, checksums"
-    },
-    {
-      "title": "Settings",
-      "route": "/settings",
-      "doc": "docs/features/settings.md",
-      "summary": "theme plus labelled demo preference fields",
-      "workflow_heading": "Change Preferences"
-    }
+    { "title": "Continuous Bag Offload", "route": "/upload", "doc": "docs/features/bag-offload.md", "summary": "Presigned-PUT each closed rosbag2 split into bags/<robot>/<session>/ while recording continues; local copies deleted only after head_object confirms.", "workflow_heading": "Offload" },
+    { "title": "Session Catalog & Search", "route": "/catalog", "doc": "docs/features/session-catalog.md", "summary": "Parquet catalog keyed by robot, date, topic set and ROS distro; sample-scoped explorer over the bags/ namespace." },
+    { "title": "Bag Describe", "route": null, "doc": "docs/features/bag-describe.md", "summary": "ros2 bag info when a ROS 2 env is present, else parse rosbag2 metadata.yaml; writes metadata.json and records compression sizes." },
+    { "title": "Replay via Presigned URL", "route": null, "doc": "docs/features/replay-streaming.md", "summary": "Presigned GET manifest streams a session's splits for ros2 bag play against B2." },
+    { "title": "Bucket Explorer", "route": "/files", "doc": "docs/features/bucket-explorer.md", "summary": "Full-bucket browse across bags/ and catalog/, kept from the starter kit." },
+    { "title": "Offload Dashboard", "route": "/", "doc": "docs/features/dashboard.md", "summary": "Offload volume, session count, and compression-ratio stats over the bags/ prefix." }
   ],
   "b2_surface": [
-    { "operation": "put_object", "why": "store an uploaded object" },
-    { "operation": "presigned PUT", "why": "the browser uploads bytes directly to B2, bypassing the Function payload cap" },
-    { "operation": "list_objects_v2", "why": "the shared full-bucket listing behind the file list and the stats cards" },
-    { "operation": "head_object", "why": "cheap per-key metadata, and the /health connectivity probe" },
-    { "operation": "get_object", "why": "re-read bytes to recompute rich metadata on demand" },
-    { "operation": "presigned GET", "why": "download and inline preview URLs" },
-    { "operation": "delete_object", "why": "remove an object" }
+    { "operation": "put_object", "why": "Write each session's metadata.json and roll the Parquet catalog under catalog/." },
+    { "operation": "presigned PUT (put_object)", "why": "Direct robot/browser upload of each closed bag split under bags/<robot>/<session>/." },
+    { "operation": "list_objects_v2", "why": "Enumerate a session's splits and discover sessions under the bags/ prefix for the catalog." },
+    { "operation": "head_object", "why": "Confirm a split landed before the watcher deletes the local copy, and read split sizes." },
+    { "operation": "get_object", "why": "Read rosbag2 metadata.yaml and the Parquet catalog for describe and query." },
+    { "operation": "presigned GET (get_object)", "why": "Stream bag splits for ros2 bag play replay and download the catalog." },
+    { "operation": "delete_object", "why": "Delete a session's bags, scoped strictly to its bags/<robot>/<session>/ prefix." }
   ],
-  "b2_key_prefix": "uploads/",
-  "stack": {
-    "web": "Next.js 16, React 19, Tailwind v4, shadcn/ui, TanStack Query, Recharts",
-    "api": "FastAPI, Python 3.12+, boto3, Pydantic v2, Pillow, PyPDF2",
-    "storage": "Backblaze B2 (S3-compatible API)",
-    "package_manager": "pnpm workspaces"
-  },
+  "b2_key_prefix": "bags/",
+  "stack": { "web": "Next.js 16 (App Router, React 19, Tailwind v4, shadcn/ui, TanStack Query)", "api": "FastAPI (Python 3.12+, boto3, Pydantic v2, pyarrow)", "storage": "Backblaze B2 (S3-compatible API)", "package_manager": "pnpm" },
   "deployment_targets": ["vercel", "railway"],
   "env_vars": [
-    { "name": "B2_APPLICATION_KEY_ID", "required": true, "secret": true, "note": "B2 application key ID (**keyID** in the B2 console)" },
-    { "name": "B2_APPLICATION_KEY", "required": true, "secret": true, "note": "B2 application key (**applicationKey**) — shown once at creation" },
-    { "name": "B2_BUCKET_NAME", "required": true, "secret": false, "note": "bucket unique name (**Bucket Unique Name** in the B2 console)" },
-    { "name": "B2_REGION", "required": true, "secret": false, "note": "the region inside the bucket's **Endpoint** (`s3.<region>.backblazeb2.com`); the S3 endpoint is derived from it" },
-    { "name": "B2_PUBLIC_URL_BASE", "required": false, "secret": false, "note": "public object base URL, when the bucket is public" },
-    { "name": "NEXT_PUBLIC_API_URL", "required": false, "secret": false, "note": "separate-origin deploys only; Next.js inlines it at build time" }
+    { "name": "B2_APPLICATION_KEY_ID", "required": true, "secret": true, "note": "B2 application key id." },
+    { "name": "B2_APPLICATION_KEY", "required": true, "secret": true, "note": "B2 application key." },
+    { "name": "B2_BUCKET_NAME", "required": true, "secret": false, "note": "Target B2 bucket for bags/ and catalog/." },
+    { "name": "B2_REGION", "required": true, "secret": false, "note": "B2 region, e.g. us-east-005; endpoint is derived from it." },
+    { "name": "B2_PUBLIC_URL_BASE", "required": false, "secret": false, "note": "Optional public base URL for objects served publicly." },
+    { "name": "NEXT_PUBLIC_API_URL", "required": false, "secret": false, "note": "Frontend override for the API base URL (dev/deploy)." }
   ],
-  "attribution_token": "b2ai-oss-start",
-  "repo": { "org": "backblaze-b2-samples", "name": "vibe-coding-starter-kit" },
-  "screenshots": [
-    {
-      "path": "docs/images/b2-starterkit-dashboard1.png",
-      "alt": "Dashboard view showing stat cards, upload activity chart, and recent uploads table",
-      "caption": "**Dashboard** — stats, upload activity, and recent uploads at a glance:"
-    },
-    {
-      "path": "docs/images/b2-starterkit-fileview2.png",
-      "alt": "File browser view showing a tree of files with hover actions",
-      "caption": "**File browser** — tree view with preview, download, and delete:"
-    }
-  ]
+  "attribution_token": "b2ai-rosbag2-cloud-offload",
+  "repo": { "org": "backblaze-b2-samples", "name": "rosbag2-cloud-offload" },
+  "screenshots": []
 }

@@ -27,6 +27,7 @@ jmespath==1.1.0
 packaging==26.2
 pillow==12.3.0
 pluggy==1.6.0
+pyarrow==25.0.1
 pydantic==2.13.4
 pydantic-core==2.46.4
 pydantic-settings==2.14.2

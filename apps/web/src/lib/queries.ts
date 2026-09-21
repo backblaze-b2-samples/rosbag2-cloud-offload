@@ -8,20 +8,38 @@ import {
 } from "@tanstack/react-query";
 import {
   ApiError,
+  createSession,
   deleteFile,
+  deleteSession,
+  describeSession,
+  getCatalog,
   getDownloadUrl,
   getFileDetail,
   getFiles,
   getFileStats,
   getHealth,
   getPreviewUrl,
+  getSessionDetail,
   getUploadActivity,
+  listSessions,
+  rebuildCatalog,
+  replaySession,
+  type SessionFilters,
+  updateSession,
 } from "@/lib/api-client";
 import type {
+  CatalogRows,
+  DeleteResult,
   FileMetadata,
   FileMetadataDetail,
   FileUrlResponse,
-} from "@vibe-coding-starter-kit/shared";
+  ReplayManifest,
+  Session,
+  SessionCreate,
+  SessionDetail,
+  SessionList,
+  SessionUpdate,
+} from "@rosbag2-cloud-offload/shared";
 import { qk } from "@/lib/generated/query-keys";
 
 // Query keys are GENERATED from the API contract (`pnpm gen:api`) and their
@@ -166,5 +184,102 @@ export function useDeleteFile() {
       dropDeletedFileFromCache(qc, fileKey);
       qc.invalidateQueries({ queryKey: qk.all });
     },
+  });
+}
+
+// --- sessions & catalog (rosbag2 offload domain) -------------------------
+// The generated `qk.sessions` / `qk.catalog` cover the two cached list reads.
+// Session *detail* is keyed by path params (robot/session), which the contract
+// carries as path segments rather than query params, so its key is hand-written
+// here — a caching decision the generator does not own.
+
+/** Cache key for a single session's detail, keyed by robot + session id. */
+export const sessionDetailKey = (robot: string, session: string) =>
+  [...qk.all, "session", robot, session] as const;
+
+export function useSessions(
+  filters: SessionFilters = {},
+  { enabled = true }: QueryGate = {},
+) {
+  return useQuery<SessionList, ApiError>({
+    queryKey: qk.sessions(filters.robot, filters.ros_distro, filters.since, filters.topic),
+    queryFn: () => listSessions(filters),
+    enabled,
+  });
+}
+
+export function useSessionDetail(
+  robot: string,
+  session: string,
+  { enabled = true }: QueryGate = {},
+) {
+  return useQuery<SessionDetail, ApiError>({
+    queryKey: sessionDetailKey(robot, session),
+    queryFn: () => getSessionDetail(robot, session),
+    enabled: enabled && !!robot && !!session,
+  });
+}
+
+export function useCatalog(
+  filters: SessionFilters & { date?: string } = {},
+  { enabled = true }: QueryGate = {},
+) {
+  return useQuery<CatalogRows, ApiError>({
+    queryKey: qk.catalog(filters.robot, filters.date, filters.topic, filters.ros_distro),
+    queryFn: () => getCatalog(filters),
+    enabled,
+  });
+}
+
+export function useCreateSession() {
+  const qc = useQueryClient();
+  return useMutation<Session, ApiError, SessionCreate>({
+    mutationFn: (payload) => createSession(payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.all }),
+  });
+}
+
+export function useUpdateSession(robot: string, session: string) {
+  const qc = useQueryClient();
+  return useMutation<Session, ApiError, SessionUpdate>({
+    mutationFn: (payload) => updateSession(robot, session, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: sessionDetailKey(robot, session) });
+      qc.invalidateQueries({ queryKey: [...qk.all, "sessions"] });
+      qc.invalidateQueries({ queryKey: [...qk.all, "catalog"] });
+    },
+  });
+}
+
+export function useDeleteSession() {
+  const qc = useQueryClient();
+  return useMutation<DeleteResult, ApiError, { robot: string; session: string }>({
+    mutationFn: ({ robot, session }) => deleteSession(robot, session),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.all }),
+  });
+}
+
+export function useDescribeSession(robot: string, session: string) {
+  const qc = useQueryClient();
+  return useMutation<SessionDetail, ApiError, void>({
+    mutationFn: () => describeSession(robot, session),
+    onSuccess: (data) => {
+      qc.setQueryData(sessionDetailKey(robot, session), data);
+      qc.invalidateQueries({ queryKey: [...qk.all, "catalog"] });
+    },
+  });
+}
+
+export function useReplaySession(robot: string, session: string) {
+  return useMutation<ReplayManifest, ApiError, void>({
+    mutationFn: () => replaySession(robot, session),
+  });
+}
+
+export function useRebuildCatalog() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => rebuildCatalog(),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [...qk.all, "catalog"] }),
   });
 }

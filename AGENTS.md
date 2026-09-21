@@ -29,15 +29,15 @@ These pieces are shared scaffolding rather than app-specific code: keep them, an
 
 **Keep as-is (do not strip, rename, or replace)**
 - **UI kit / design system.** `apps/web/src/components/ui/` (shadcn primitives), the design tokens in `apps/web/src/app/globals.css`, and the `/design` reference page. Build new screens with these primitives; never edit the generated `components/ui/` files directly. Restyling happens through tokens in `globals.css`.
-- **File Explorer.** `/files` route, `apps/web/src/app/files/`, and `apps/web/src/components/files/`. The Files sidebar entry in `apps/web/src/components/layout/app-sidebar.tsx` stays.
-- **Upload.** `/upload` route, `apps/web/src/app/upload/`, and `apps/web/src/components/upload/`. The Upload sidebar entry stays.
-- The sidebar nav itself (Dashboard, Upload, Files, Settings, plus the Design System utility link).
+- **Bucket Explorer (full-bucket).** `/files` route, `apps/web/src/app/files/`, and `apps/web/src/components/files/`. Browses every object across `bags/` and `catalog/`. The Bucket sidebar entry in `apps/web/src/components/layout/app-sidebar.tsx` stays and is never removable.
+- **Offload.** `/upload` route and `apps/web/src/app/upload/` host the session-scoped offload flow (presigned PUT into `bags/<robot>/<session>/`). The Offload sidebar entry stays.
+- The sidebar nav itself (Dashboard, Offload, Catalog, Bucket, Settings, plus the Design System utility link).
 
 **Adapt to this app**
-- **Dashboard.** `/` route and `apps/web/src/components/dashboard/` (stats cards, upload chart, recent uploads table) are illustrative defaults. Replace them with metrics, charts, and tables that reflect what this app actually does (e.g. transcripts processed, embeddings indexed, classifications run). New aggregations must flow through the same `runtime -> service -> repo` layering and be exposed via TanStack Query hooks in `apps/web/src/lib/queries.ts` — no bare `useEffect + fetch`, and no hand-added `qk` entry: query keys come from `pnpm gen:api`.
-- Update `docs/features/dashboard.md` in the same PR as any dashboard change (see §9).
+- **Catalog & Dashboard.** `/catalog` (the session catalog + primary-entity list) and `/` (the offload dashboard) present the queries a fleet asks. New aggregations must flow through the same `runtime -> service -> repo` layering and be exposed via TanStack Query hooks in `apps/web/src/lib/queries.ts` — no bare `useEffect + fetch`, and no hand-added `qk` entry: query keys come from `pnpm gen:api`.
+- Update the matching `docs/features/*.md` in the same PR as any screen change (see §9).
 
-**Why this contract exists** — the UI kit, Files, and Upload pages are the reusable B2-backed scaffolding; stripping them costs the app its whole storage surface. The dashboard is the one screen designed to be rewritten per app.
+**Why this contract exists** — the UI kit and the full-bucket Bucket Explorer are the reusable B2-backed scaffolding; stripping them costs the app its whole storage surface. rosbag2 is the vendor describe engine and must stay rosbag2 (never a third-party bag reader). The catalog and dashboard are the screens designed to be shaped per fleet.
 
 ## 3. Architectural Invariants
 

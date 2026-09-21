@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     # app-config.ts, so this is the backend's declaration of the same slug:
     # keep it equal to the package name, and derive identifiers from it rather
     # than writing a second name a rename sweep has to know about.
-    app_slug: str = "vibe-coding-starter-kit"
+    app_slug: str = "rosbag2-cloud-offload"
 
     api_port: int = 8000
     # Interactive API docs (/docs, /redoc, /openapi.json). On by default for

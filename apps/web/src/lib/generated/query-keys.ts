@@ -22,10 +22,12 @@
  */
 export const qk = {
   all: ["b2"] as const,
+  catalog: (robot?: string, date?: string, topic?: string, ros_distro?: string) => [...qk.all, "catalog", robot, date, topic, ros_distro] as const,
   files: (prefix?: string, limit?: number) => [...qk.all, "files", prefix ?? "", limit ?? 100] as const,
   detail: (key: string) => [...qk.all, "detail", key] as const,
   preview: (key: string) => [...qk.all, "preview", key] as const,
   stats: () => [...qk.all, "stats"] as const,
   uploadActivity: (days?: number) => [...qk.all, "stats", "activity", days ?? 7] as const,
   health: () => [...qk.all, "health"] as const,
+  sessions: (robot?: string, ros_distro?: string, since?: string, topic?: string) => [...qk.all, "sessions", robot, ros_distro, since, topic] as const,
 };

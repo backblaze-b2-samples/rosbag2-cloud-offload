@@ -27,7 +27,15 @@ from app.config import (  # noqa: E402
     REQUIRED_B2_SETTINGS,
     settings,
 )
-from app.runtime import files, health, metrics, ratelimit, upload  # noqa: E402
+from app.runtime import (  # noqa: E402
+    catalog,
+    files,
+    health,
+    metrics,
+    ratelimit,
+    sessions,
+    upload,
+)
 from app.service.files import warm_listing_cache  # noqa: E402
 
 # --- Startup validation ---
@@ -107,11 +115,13 @@ logger = logging.getLogger("api")
 
 # --- App setup ---
 
-API_TITLE = "Vibe Coding Starter Kit API"
+API_TITLE = "Rosbag2 Cloud Offload API"
 API_DESCRIPTION = (
-    "Local API for the Vibe Coding Starter Kit template, providing file upload "
-    "and management backed by Backblaze B2. This contract documents the "
-    "template's local API, not a hosted public endpoint."
+    "Local API for Rosbag2 Cloud Offload: stream ROS 2 rosbag2 recordings off "
+    "the robot into Backblaze B2, describe them from rosbag2's own metadata, "
+    "and catalog every session in Parquet so any recording can be found and "
+    "replayed with ros2 bag play from a presigned B2 URL. This contract "
+    "documents the app's local API, not a hosted public endpoint."
 )
 API_VERSION = "0.1.0"
 
@@ -165,5 +175,7 @@ app.add_middleware(
 
 app.include_router(health.router, tags=["health"])
 app.include_router(upload.router, tags=["upload"])
+app.include_router(sessions.router, tags=["sessions"])
+app.include_router(catalog.router, tags=["catalog"])
 app.include_router(files.router, tags=["files"])
 app.include_router(metrics.router, tags=["metrics"])

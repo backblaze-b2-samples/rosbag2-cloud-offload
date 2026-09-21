@@ -11,7 +11,7 @@
 
 /** The verbs this app's routes actually use, narrowed from the contract. */
 export type ApiClientRoute = {
-  method: "delete" | "get" | "post";
+  method: "delete" | "get" | "patch" | "post";
   path: string;
 };
 
@@ -24,6 +24,9 @@ export type ApiClientRoute = {
 export const API_CLIENT_ROUTES = {
   fileByKeyDelete: { method: "delete", path: "/files-by-key" },
   legacyFileDelete: { method: "delete", path: "/files/{key}" },
+  sessionDelete: { method: "delete", path: "/sessions/{robot}/{session}" },
+  catalog: { method: "get", path: "/catalog" },
+  catalogDownload: { method: "get", path: "/catalog/download" },
   files: { method: "get", path: "/files" },
   fileByKeyDetail: { method: "get", path: "/files-by-key/detail" },
   fileByKeyDownload: { method: "get", path: "/files-by-key/download" },
@@ -35,6 +38,14 @@ export const API_CLIENT_ROUTES = {
   fileStats: { method: "get", path: "/files/stats" },
   uploadActivity: { method: "get", path: "/files/stats/activity" },
   health: { method: "get", path: "/health" },
+  sessions: { method: "get", path: "/sessions" },
+  sessionDetail: { method: "get", path: "/sessions/{robot}/{session}" },
+  sessionUpdate: { method: "patch", path: "/sessions/{robot}/{session}" },
+  catalogRebuild: { method: "post", path: "/catalog/rebuild" },
+  sessionCreate: { method: "post", path: "/sessions" },
+  sessionDescribe: { method: "post", path: "/sessions/{robot}/{session}/describe" },
+  sessionOffload: { method: "post", path: "/sessions/{robot}/{session}/offload" },
+  sessionReplay: { method: "post", path: "/sessions/{robot}/{session}/replay" },
   uploadPresign: { method: "post", path: "/upload/presign" },
   uploadVerify: { method: "post", path: "/upload/verify" },
 } as const satisfies Record<string, ApiClientRoute>;

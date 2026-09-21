@@ -1,42 +1,33 @@
 <!-- last_verified: 2026-08-12 -->
 <!-- gen:begin readme-header -->
-# Vibe Coding Starter Kit
+# Rosbag2 Cloud Offload
 
-Stop wiring boilerplate and start building. A well-engineered full-stack foundation — dashboard, drag-and-drop upload and a file browser — with Backblaze B2 storage already wired in, so builders skip the boilerplate loop.
+Continuous rosbag2 offload, describe, and catalog on Backblaze B2 — bags off the robot, searchable and replayable. Stream ROS 2 rosbag2 recordings off the robot into Backblaze B2, describe them from rosbag2's own metadata, and catalog every session in Parquet so any recording can be found and replayed with ros2 bag play from a presigned B2 URL.
 
 Built for developers and AI coding agents: the scaffolding, the storage
 wiring and the agent-facing docs are already done, so you start on your
 app's own features instead of rebuilding the same shell. Storage is
-**[Backblaze B2](https://www.backblaze.com/sign-up/ai-cloud-storage?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-oss-start)**, integrated through the S3-compatible API.
+**[Backblaze B2](https://www.backblaze.com/sign-up/ai-cloud-storage?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-rosbag2-cloud-offload)**, integrated through the S3-compatible API.
 
 **What you get out of the box:**
-- Full-stack dashboard UI (Next.js 16, React 19, Tailwind v4, shadcn/ui, TanStack Query, Recharts)
-- File Upload — drag-and-drop upload with real-time progress
-- File Browser — list, preview, download, delete files
-- Dashboard — stats cards, upload chart, recent uploads
-- Metadata Extraction — image dimensions, EXIF, PDF info, checksums
-- Settings — theme plus labelled demo preference fields
-- Backend with a strict layered architecture and structural tests (FastAPI, Python 3.12+, boto3, Pydantic v2, Pillow, PyPDF2)
+- Full-stack dashboard UI (Next.js 16 (App Router, React 19, Tailwind v4, shadcn/ui, TanStack Query))
+- Continuous Bag Offload — Presigned-PUT each closed rosbag2 split into bags/<robot>/<session>/ while recording continues; local copies deleted only after head_object confirms.
+- Session Catalog & Search — Parquet catalog keyed by robot, date, topic set and ROS distro; sample-scoped explorer over the bags/ namespace.
+- Bag Describe — ros2 bag info when a ROS 2 env is present, else parse rosbag2 metadata.yaml; writes metadata.json and records compression sizes.
+- Replay via Presigned URL — Presigned GET manifest streams a session's splits for ros2 bag play against B2.
+- Bucket Explorer — Full-bucket browse across bags/ and catalog/, kept from the starter kit.
+- Offload Dashboard — Offload volume, session count, and compression-ratio stats over the bags/ prefix.
+- Backend with a strict layered architecture and structural tests (FastAPI (Python 3.12+, boto3, Pydantic v2, pyarrow))
 - Agent-optimized docs — your AI coding agent can read the repo and start contributing immediately
 <!-- gen:end readme-header -->
 
 <!-- gen:begin readme-screenshots -->
-## What it looks like
-
-**Dashboard** — stats, upload activity, and recent uploads at a glance:
-
-![Dashboard view showing stat cards, upload activity chart, and recent uploads table](docs/images/b2-starterkit-dashboard1.png)
-
-**File browser** — tree view with preview, download, and delete:
-
-![File browser view showing a tree of files with hover actions](docs/images/b2-starterkit-fileview2.png)
-
 > **Deploy your own in one click** → [Deploy to Vercel](#deploying-to-vercel). One project, one origin, no CORS to wire up.
 <!-- gen:end readme-screenshots -->
 
 ## Quick Start
 
-You need: Node.js >= 20, pnpm >= 10, Python >= 3.12, and a free **[Backblaze B2 account](https://www.backblaze.com/sign-up/ai-cloud-storage?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-oss-start)**.
+You need: Node.js >= 20, pnpm >= 10, Python >= 3.12, and a free **[Backblaze B2 account](https://www.backblaze.com/sign-up/ai-cloud-storage?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-rosbag2-cloud-offload)**.
 
 ### Start a new project
 
@@ -52,12 +43,12 @@ cd my-cool-app
 **Option 2: Clone and reinitialize**
 
 ```bash
-git clone https://github.com/backblaze-b2-samples/vibe-coding-starter-kit.git my-cool-app
+git clone https://github.com/backblaze-b2-samples/rosbag2-cloud-offload.git my-cool-app
 cd my-cool-app
 rm -rf .git
 git init
 git add .
-git commit -m "Initial commit from vibe-coding-starter-kit"
+git commit -m "Initial commit from rosbag2-cloud-offload"
 ```
 
 Either way you get a clean project with no upstream history — ready to push to your own repo and point your agent at it.
@@ -83,15 +74,15 @@ existing `.env`.
 
 **2. Add your B2 credentials**
 
-Open `.env` in your editor and keep it visible. Then head to the [Backblaze B2 dashboard](https://secure.backblaze.com/b2_buckets.htm?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-oss-start) and:
+Open `.env` in your editor and keep it visible. Then head to the [Backblaze B2 dashboard](https://secure.backblaze.com/b2_buckets.htm?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-rosbag2-cloud-offload) and:
 
 <!-- gen:begin readme-credentials -->
 1. **Create a bucket** and an **application key** with `Read and Write`
    permission, then paste each value into `.env`:
-   - `B2_APPLICATION_KEY_ID` — B2 application key ID (**keyID** in the B2 console)
-   - `B2_APPLICATION_KEY` — B2 application key (**applicationKey**) — shown once at creation
-   - `B2_BUCKET_NAME` — bucket unique name (**Bucket Unique Name** in the B2 console)
-   - `B2_REGION` — the region inside the bucket's **Endpoint** (`s3.<region>.backblazeb2.com`); the S3 endpoint is derived from it
+   - `B2_APPLICATION_KEY_ID` — B2 application key id.
+   - `B2_APPLICATION_KEY` — B2 application key.
+   - `B2_BUCKET_NAME` — Target B2 bucket for bags/ and catalog/.
+   - `B2_REGION` — B2 region, e.g. us-east-005; endpoint is derived from it.
 
    B2 shows an application key once, at creation. The optional variables are
    documented in `.env.example` and in the delivery runbooks.
@@ -105,7 +96,7 @@ Open `.env` in your editor and keep it visible. Then head to the [Backblaze B2 d
 pnpm dev
 ```
 
-That's it. Frontend at `localhost:3000`, API at `localhost:8000`. Upload a file and see it working. Interactive API docs (Swagger UI) are at `localhost:8000/docs`, with ReDoc at `/redoc`.
+That's it. Frontend at `localhost:3000`, API at `localhost:8000`. Start a session on the Catalog, offload a rosbag2 split from the Offload page, and watch it land in B2 and appear in the searchable catalog. Interactive API docs (Swagger UI) are at `localhost:8000/docs`, with ReDoc at `/redoc`.
 
 `pnpm dev` runs the preflight check first — it catches the common setup gotchas (wrong Node/Python version, missing venv, missing or placeholder `.env`, ports already taken) and tells you exactly how to fix each one. Run it standalone any time with `pnpm run doctor`.
 
@@ -120,37 +111,43 @@ port-fallback, and IPv6 behavior.
 
 ## When to use
 
-Use this repository as a template or sample implementation when you want to
-clone or fork a working file-management dashboard, connect it to your own B2
-bucket, and then rebrand and extend it for your application. It provides
-production-minded engineering controls—including strict architecture,
-contract checks, tests, linting, and deployment runbooks—so you can begin with
-a dependable scaffold instead of a blank prototype.
+Use this repository when you run a ROS 2 vehicle or robot program and need
+durable, queryable off-machine storage for the bag splits `rosbag2` writes on
+every run — without standing up your own object store. It streams each closed
+split into Backblaze B2 under `bags/<robot>/<session>/`, describes it from
+rosbag2's own metadata, and rolls every session into a searchable Parquet
+catalog so any recording can be found and replayed later with `ros2 bag play`
+from a presigned B2 URL. It is also a dependable, production-minded sample to
+clone and extend: strict layered architecture, contract checks, tests, and
+deployment runbooks come with it.
 
 ## When not to use
 
-Do not choose this repository expecting a complete hosted SaaS product or a
-drop-in production service. It does not provide managed hosting, user accounts,
-authentication, tenant isolation, billing, or on-call operations. Before using
-an adapted application in production, you own its product-specific security,
-operations, capacity, compliance, and support decisions.
+Do not choose this repository expecting a complete hosted fleet-data platform
+or a drop-in production service. It does not provide managed hosting, user
+accounts, authentication, tenant isolation, billing, retention policy
+management, or on-call operations, and it does not run `ros2 bag record` for you
+— recording happens on the robot; this app owns everything after a split
+closes. Before running an adapted deployment in production, you own its
+product-specific security, operations, capacity, compliance, and support
+decisions.
 
 ## Why Backblaze B2?
 
-[Backblaze B2](https://www.backblaze.com/cloud-storage?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-oss-start) is the object storage this kit is built around — a deliberate default, not just a demo backend:
+[Backblaze B2](https://www.backblaze.com/cloud-storage?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-rosbag2-cloud-offload) is the object storage this kit is built around — a deliberate default, not just a demo backend:
 
 - **S3-compatible API.** B2 speaks the S3 API, so the `boto3` calls, SDKs, and tooling you already use for AWS S3 work unchanged — you just point them at B2's endpoint. This kit uses the S3-compatible API throughout (isolated in `services/api/app/repo/`), so nothing is locked to a proprietary client.
-- **Built for data-heavy apps.** B2 storage runs at a fraction of hyperscaler pricing with generous free egress to many CDN and compute partners — what you want when an AI app accumulates uploads, datasets, model artifacts, and generated media.
-- **Free to start.** A [free B2 account](https://www.backblaze.com/sign-up/ai-cloud-storage?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-oss-start) is enough to run everything in this repo.
+- **Built for data-heavy apps.** B2 storage runs at a fraction of hyperscaler pricing with generous free egress to many CDN and compute partners — what you want when a robot fleet accumulates multi-GB-per-hour bag streams, plus the datasets and artifacts derived from them.
+- **Free to start.** A [free B2 account](https://www.backblaze.com/sign-up/ai-cloud-storage?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-rosbag2-cloud-offload) is enough to run everything in this repo.
 
-## Building Your App
+## Extending this sample
 
-When you adapt this kit for a new app, keep the shared scaffolding and only swap out what's app-specific:
+The offload → describe → catalog → replay pipeline is the app; extend it while keeping the shared scaffolding:
 
-- **Keep** the UI kit (`apps/web/src/components/ui/` + design tokens in `globals.css` + `/design`).
-- **Keep** the File Explorer (`/files`) and Upload (`/upload`) pages and their sidebar nav entries — they're the reusable B2-backed surface.
-- **Adapt** the Dashboard (`/`) to your use case — replace the default stats, chart, and recent uploads with metrics that reflect what your app actually does.
-- **Rebrand** by editing a single file: `apps/web/src/lib/app-config.ts` holds the app name and description (`APP_NAME`, `APP_DESCRIPTION`). Changing them there updates the page title, sidebar, and breadcrumb everywhere — no other files to touch.
+- **The vendor engine is rosbag2, and it stays rosbag2.** Describe reads rosbag2's own `metadata.yaml` (and prefers `ros2 bag info` when a ROS 2 environment is on `PATH`) — never a third-party bag reader. Keep it that way when you extend describe.
+- **Keep** the UI kit (`apps/web/src/components/ui/` + design tokens in `globals.css` + `/design`) and the full-bucket Explorer at `/files`, which browses everything under `bags/` and `catalog/`.
+- **Adapt** the Catalog (`/catalog`) and Dashboard (`/`) to the queries your fleet actually asks — the catalog is keyed by robot, date, topic set, and ROS distro, and the Parquet file is yours to query with DuckDB, pandas, or pyarrow.
+- **Rebrand** by editing a single file: `apps/web/src/lib/app-config.ts` (`APP_NAME`, `APP_DESCRIPTION`) updates the page title, sidebar, and breadcrumb everywhere — no other files to touch.
 
 Full contract and rationale: [AGENTS.md §2 — Shared Scaffolding Contract](AGENTS.md#2-shared-scaffolding-contract).
 
@@ -201,11 +198,12 @@ This approach draws from [OpenAI's experience building with Codex](https://opena
 ## Core Features
 
 <!-- gen:begin readme-core-features -->
-- [File Upload](docs/features/file-upload.md) — drag-and-drop upload with real-time progress
-- [File Browser](docs/features/file-browser.md) — list, preview, download, delete files
-- [Dashboard](docs/features/dashboard.md) — stats cards, upload chart, recent uploads
-- [Metadata Extraction](docs/features/metadata-extraction.md) — image dimensions, EXIF, PDF info, checksums
-- [Settings](docs/features/settings.md) — theme plus labelled demo preference fields
+- [Continuous Bag Offload](docs/features/bag-offload.md) — Presigned-PUT each closed rosbag2 split into bags/<robot>/<session>/ while recording continues; local copies deleted only after head_object confirms.
+- [Session Catalog & Search](docs/features/session-catalog.md) — Parquet catalog keyed by robot, date, topic set and ROS distro; sample-scoped explorer over the bags/ namespace.
+- [Bag Describe](docs/features/bag-describe.md) — ros2 bag info when a ROS 2 env is present, else parse rosbag2 metadata.yaml; writes metadata.json and records compression sizes.
+- [Replay via Presigned URL](docs/features/replay-streaming.md) — Presigned GET manifest streams a session's splits for ros2 bag play against B2.
+- [Bucket Explorer](docs/features/bucket-explorer.md) — Full-bucket browse across bags/ and catalog/, kept from the starter kit.
+- [Offload Dashboard](docs/features/dashboard.md) — Offload volume, session count, and compression-ratio stats over the bags/ prefix.
 <!-- gen:end readme-core-features -->
 - [Design System](docs/design-system.md) — tokens, primitives, AI elements, the blaze generating loader, and inline `ErrorState` / `EmptyState` patterns. Live preview at `/design`.
 - Inline error handling — fetch failures surface *what's wrong* (API offline, 401, 5xx) and offer a Retry, instead of silently rendering empty state.
@@ -221,9 +219,10 @@ This approach draws from [OpenAI's experience building with Codex](https://opena
 
 ## Tech Stack
 
-- TypeScript, Next.js 16, React 19, Tailwind v4, shadcn/ui, Recharts
+- TypeScript, Next.js 16, React 19, Tailwind v4, shadcn/ui
 - TanStack Query — caching, dedup, retry, stale-while-revalidate for every fetch
-- Python 3.12+, FastAPI, boto3, Pydantic v2, Pillow, PyPDF2
+- Python 3.12+, FastAPI, boto3, Pydantic v2, pyarrow (Parquet catalog)
+- rosbag2 as the describe engine — `ros2 bag info` when a ROS 2 env is present, else rosbag2's own `metadata.yaml`
 - Backblaze B2 (S3-compatible object storage)
 - pnpm workspaces (monorepo)
 
@@ -266,7 +265,7 @@ from the same repo and share one origin (web at `/`, API under `/api`), so
 there's **no CORS and no second URL to wire up**.
 
 <!-- gen:begin readme-deploy-button -->
-[![Deploy to Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbackblaze-b2-samples%2Fvibe-coding-starter-kit&project-name=vibe-coding-starter-kit&repository-name=vibe-coding-starter-kit&demo-title=Vibe%20Coding%20Starter%20Kit&demo-description=A%20well-engineered%20full-stack%20foundation%20%E2%80%94%20dashboard%2C%20drag-and-drop%20upload%20and%20a%20file%20browser%20%E2%80%94%20with%20Backblaze%20B2%20storage%20already%20wired%20in%2C%20so%20builders%20skip%20the%20boilerplate%20loop.&demo-image=https%3A%2F%2Fraw.githubusercontent.com%2Fbackblaze-b2-samples%2Fvibe-coding-starter-kit%2Fmain%2Fdocs%2Fimages%2Fb2-starterkit-dashboard1.png&env=B2_APPLICATION_KEY_ID%2CB2_APPLICATION_KEY%2CB2_BUCKET_NAME%2CB2_REGION&envDescription=B2%20credentials%20and%20bucket&envLink=https%3A%2F%2Fgithub.com%2Fbackblaze-b2-samples%2Fvibe-coding-starter-kit%2Fblob%2Fmain%2Finfra%2Fvercel%2FREADME.md)
+[![Deploy to Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbackblaze-b2-samples%2Frosbag2-cloud-offload&project-name=rosbag2-cloud-offload&repository-name=rosbag2-cloud-offload&demo-title=Rosbag2%20Cloud%20Offload&demo-description=Stream%20ROS%202%20rosbag2%20recordings%20off%20the%20robot%20into%20Backblaze%20B2%2C%20describe%20them%20from%20rosbag2's%20own%20metadata%2C%20and%20catalog%20every%20session%20in%20Parquet%20so%20any%20recording%20can%20be%20found%20and%20replayed%20with%20ros2%20bag%20play%20from%20a%20presigned%20B2%20URL.&env=B2_APPLICATION_KEY_ID%2CB2_APPLICATION_KEY%2CB2_BUCKET_NAME%2CB2_REGION&envDescription=B2%20credentials%20and%20bucket&envLink=https%3A%2F%2Fgithub.com%2Fbackblaze-b2-samples%2Frosbag2-cloud-offload%2Fblob%2Fmain%2Finfra%2Fvercel%2FREADME.md)
 <!-- gen:end readme-deploy-button -->
 
 Set your B2 credentials and bucket, and you're live. Uploads go **directly from
@@ -288,7 +287,7 @@ preview/production, `/health` checks, and rollback — is in the
 | --- | --- |
 | [AGENTS.md](AGENTS.md) | Agent table of contents — start here |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System layout, layering, data flows |
-| [docs/features/](docs/features/) | Feature docs (file upload, file browser, dashboard, metadata extraction, settings) |
+| [docs/features/](docs/features/) | Feature docs (continuous bag offload, session catalog & search, bag describe, replay via presigned url, bucket explorer, offload dashboard) |
 | [docs/design-system.md](docs/design-system.md) | Design tokens, primitives, loader, error/empty states |
 | [docs/app-workflows.md](docs/app-workflows.md) | User journeys |
 | [docs/dev-workflows.md](docs/dev-workflows.md) | Engineering workflows, command index, releases |
@@ -304,29 +303,32 @@ preview/production, `/health` checks, and rollback — is in the
 
 ## FAQ
 
-**What is the Vibe Coding Starter Kit?**
-An open-source, full-stack template (Next.js 16 + FastAPI) with a pre-built dashboard UI, drag-and-drop file upload, and file browser, with [Backblaze B2](https://www.backblaze.com/cloud-storage?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-oss-start) cloud storage already integrated. You clone it, connect it to your own B2 bucket, then rebrand and extend it for your app.
+**What is Rosbag2 Cloud Offload?**
+An open-source, full-stack sample (Next.js 16 + FastAPI) that streams the bag splits a ROS 2 robot's `rosbag2` writes off the machine into [Backblaze B2](https://www.backblaze.com/cloud-storage?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-rosbag2-cloud-offload) under `bags/<robot>/<session>/`, describes each recording from rosbag2's own metadata, and rolls every session into a searchable Parquet catalog so it can be found and replayed with `ros2 bag play` from a presigned B2 URL.
+
+**Do I need ROS 2 installed to run it?**
+No. Describe prefers the real `ros2 bag info` CLI when a ROS 2 environment is on `PATH` (the on-device watcher path), but on the server it falls back to parsing the `metadata.yaml` rosbag2 writes beside every bag — so the app runs, offloads, catalogs, and serves replay URLs without a ROS 2 install. It never uses a third-party bag reader.
 
 **Is it free?**
 Yes. The code is MIT-licensed (see [License](#license)), and Backblaze B2 offers a free account to get started.
 
 **Can I use it in production?**
-It's a template/sample Backblaze maintains to help developers get started with B2. Production use is possible with caution and requires your own validation — you own the product-specific security, operations, capacity, compliance, and support decisions for anything you adapt, and the repository software carries no SLA. See [When not to use](#when-not-to-use) and [Maintenance and support](#maintenance-and-support).
+It's a sample Backblaze maintains to help developers store ROS 2 data on B2. Production use is possible with caution and requires your own validation — you own the product-specific security, operations, capacity, compliance, and support decisions for anything you adapt, and the repository software carries no SLA. See [When not to use](#when-not-to-use) and [Maintenance and support](#maintenance-and-support).
 
 **Does it include authentication, user accounts, or multi-tenant isolation?**
-No. It does not provide managed hosting, user accounts, authentication, tenant isolation, billing, or on-call operations. Add whatever your application requires on top of the scaffold.
+No. It does not provide managed hosting, user accounts, authentication, tenant isolation, billing, or on-call operations. The API is unauthenticated and bucket-wide — add whatever your fleet requires on top of the scaffold.
 
 **Do I have to use Backblaze B2?**
-It integrates Backblaze B2 through the S3-compatible API, and B2 is the storage the kit is built around. You supply your own B2 bucket and application key during setup.
+It integrates Backblaze B2 through the S3-compatible API, using the standard `B2_*` env vars and a custom user agent, with no second API key. You supply your own B2 bucket and application key during setup.
 
-**Is it really built for AI coding agents?**
-Yes. [AGENTS.md](AGENTS.md) is the single source of truth for coding agents, architectural boundaries are enforced mechanically by structural tests and lints (not by convention), and the docs use progressive disclosure — so an agent can read the repo and start contributing immediately.
+**How does the offload flow avoid payload limits on big bags?**
+Each closed split is uploaded with a presigned PUT straight from the robot or browser to B2 — the bytes never traverse the API Function, so there is no serverless payload ceiling. The on-device `services/api/scripts/offload_watcher.py` deletes the local copy only after B2 confirms the object landed.
 
 **What's the tech stack?**
-Frontend: TypeScript, Next.js 16, React 19, Tailwind v4, shadcn/ui, TanStack Query. Backend: Python 3.12+, FastAPI, boto3, Pydantic v2. Storage: Backblaze B2 (S3-compatible). See [Tech Stack](#tech-stack).
+Frontend: TypeScript, Next.js 16, React 19, Tailwind v4, shadcn/ui, TanStack Query. Backend: Python 3.12+, FastAPI, boto3, Pydantic v2, pyarrow. Storage: Backblaze B2 (S3-compatible). See [Tech Stack](#tech-stack).
 
 **How do I rebrand it for my own app?**
-Edit a single file — `apps/web/src/lib/app-config.ts` (`APP_NAME`, `APP_DESCRIPTION`) — and the page title, sidebar, and breadcrumb update everywhere. See [Building Your App](#building-your-app).
+Edit a single file — `apps/web/src/lib/app-config.ts` (`APP_NAME`, `APP_DESCRIPTION`) — and the page title, sidebar, and breadcrumb update everywhere. See [Extending this sample](#extending-this-sample).
 
 **How do I deploy it?**
 It deploys to Vercel as a single project — the web app and FastAPI API build from the same repo and share one origin (web at `/`, API under `/api`), so there's no CORS or second URL to wire up. A Railway path is also documented. Deploying is always a human-approved action — see [Deploying to Vercel](#deploying-to-vercel).
@@ -335,14 +337,14 @@ It deploys to Vercel as a single project — the web app and FastAPI API build f
 Local scripts are supported on macOS, Linux, and WSL2. Native Windows is not supported yet — use WSL2 on Windows.
 
 **Where do I get help or report bugs?**
-Report repository defects and feature requests through [GitHub Issues](https://github.com/backblaze-b2-samples/vibe-coding-starter-kit/issues). For B2 account, billing, service, or API help, use [Backblaze Support](https://www.backblaze.com/help).
+Report repository defects and feature requests through [GitHub Issues](https://github.com/backblaze-b2-samples/rosbag2-cloud-offload/issues). For B2 account, billing, service, or API help, use [Backblaze Support](https://www.backblaze.com/help).
 
 ## Maintenance and support
 
 Backblaze maintains this open-source template/sample to help developers get
 started with B2. Production use is possible with caution and requires your own
 validation. Report repository defects and feature requests through
-[GitHub Issues](https://github.com/backblaze-b2-samples/vibe-coding-starter-kit/issues);
+[GitHub Issues](https://github.com/backblaze-b2-samples/rosbag2-cloud-offload/issues);
 for B2 account, billing, service, or API help, use
 [Backblaze Support](https://www.backblaze.com/help). This template/sample is
 not covered by the Backblaze service level agreement, and no SLA is provided

@@ -1,7 +1,7 @@
 // Single source of truth for app identity. Rename here to rebrand a clone of this starter.
-export const APP_NAME = "Vibe Coding Starter Kit";
+export const APP_NAME = "Rosbag2 Cloud Offload";
 export const APP_DESCRIPTION =
-  "File management dashboard template powered by Backblaze B2";
+  "Stream ROS 2 rosbag2 recordings off the robot into Backblaze B2 — offload, describe, catalog, and replay";
 
 /**
  * URL- and storage-safe form of APP_NAME ("My Sample App" -> "my-sample-app").

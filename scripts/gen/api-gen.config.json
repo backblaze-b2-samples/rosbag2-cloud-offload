@@ -42,7 +42,24 @@
     "get /files/{key}": { "route": "legacyFileMetadata" },
     "delete /files/{key}": { "route": "legacyFileDelete" },
     "post /upload/presign": { "route": "uploadPresign" },
-    "post /upload/verify": { "route": "uploadVerify" }
+    "post /upload/verify": { "route": "uploadVerify" },
+    "post /sessions": { "route": "sessionCreate" },
+    "get /sessions": {
+      "route": "sessions",
+      "query": { "name": "sessions", "segments": ["sessions"] }
+    },
+    "get /sessions/{robot}/{session}": { "route": "sessionDetail" },
+    "patch /sessions/{robot}/{session}": { "route": "sessionUpdate" },
+    "delete /sessions/{robot}/{session}": { "route": "sessionDelete" },
+    "post /sessions/{robot}/{session}/offload": { "route": "sessionOffload" },
+    "post /sessions/{robot}/{session}/describe": { "route": "sessionDescribe" },
+    "post /sessions/{robot}/{session}/replay": { "route": "sessionReplay" },
+    "get /catalog": {
+      "route": "catalog",
+      "query": { "name": "catalog", "segments": ["catalog"] }
+    },
+    "post /catalog/rebuild": { "route": "catalogRebuild" },
+    "get /catalog/download": { "route": "catalogDownload" }
   },
 
   "escapeHatch": {

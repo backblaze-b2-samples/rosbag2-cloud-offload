@@ -1,6 +1,184 @@
 {
   "components": {
     "schemas": {
+      "CatalogRow": {
+        "description": "One session as the searchable Parquet catalog records it.\n\nKeyed by robot, date, topic set and ROS distro \u2014 the axes a fleet asks a\nrecording catalog to answer (\"every /camera bag from robot-07 on the 3rd\").",
+        "properties": {
+          "compressed_size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Bytes actually stored in B2 for this session's splits.",
+            "title": "Compressed Size Bytes"
+          },
+          "compression_format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "rosbag2 compression format (e.g. \"zstd\"), or null.",
+            "title": "Compression Format"
+          },
+          "compression_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "original_size_bytes / compressed_size_bytes when both are known.",
+            "title": "Compression Ratio"
+          },
+          "date": {
+            "description": "UTC recording date (YYYY-MM-DD), from created_at.",
+            "title": "Date",
+            "type": "string"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Recording duration, from rosbag2 metadata.",
+            "title": "Duration Seconds"
+          },
+          "message_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total messages across the bag, from rosbag2 metadata.",
+            "title": "Message Count"
+          },
+          "original_size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Uncompressed size from rosbag2 metadata, when recorded.",
+            "title": "Original Size Bytes"
+          },
+          "prefix": {
+            "description": "B2 key prefix: bags/<robot>/<session>/.",
+            "title": "Prefix",
+            "type": "string"
+          },
+          "robot": {
+            "title": "Robot",
+            "type": "string"
+          },
+          "ros_distro": {
+            "title": "Ros Distro",
+            "type": "string"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "split_count": {
+            "title": "Split Count",
+            "type": "integer"
+          },
+          "topic_count": {
+            "title": "Topic Count",
+            "type": "integer"
+          },
+          "topic_set": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Topic Set",
+            "type": "array"
+          }
+        },
+        "required": [
+          "robot",
+          "session_id",
+          "date",
+          "ros_distro",
+          "topic_set",
+          "topic_count",
+          "split_count",
+          "message_count",
+          "duration_seconds",
+          "compression_format",
+          "original_size_bytes",
+          "compressed_size_bytes",
+          "compression_ratio",
+          "prefix"
+        ],
+        "title": "CatalogRow",
+        "type": "object"
+      },
+      "CatalogRows": {
+        "description": "The catalog as a filtered list of rows.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rows",
+          "count"
+        ],
+        "title": "CatalogRows",
+        "type": "object"
+      },
+      "CatalogSummary": {
+        "description": "Result of rolling every session into catalog/catalog.parquet.",
+        "properties": {
+          "bytes": {
+            "title": "Bytes",
+            "type": "integer"
+          },
+          "parquet_key": {
+            "title": "Parquet Key",
+            "type": "string"
+          },
+          "rows": {
+            "title": "Rows",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "rows",
+          "parquet_key",
+          "bytes"
+        ],
+        "title": "CatalogSummary",
+        "type": "object"
+      },
       "DailyUploadCount": {
         "description": "One day's upload count, for the dashboard activity chart.",
         "properties": {
@@ -37,6 +215,186 @@
           "key"
         ],
         "title": "DeleteFileResponse",
+        "type": "object"
+      },
+      "DeleteResult": {
+        "description": "Acknowledgement of a prefix-scoped session delete.",
+        "properties": {
+          "deleted": {
+            "description": "Number of objects removed under the prefix.",
+            "title": "Deleted",
+            "type": "integer"
+          },
+          "prefix": {
+            "title": "Prefix",
+            "type": "string"
+          }
+        },
+        "required": [
+          "deleted",
+          "prefix"
+        ],
+        "title": "DeleteResult",
+        "type": "object"
+      },
+      "DescribeSummary": {
+        "description": "What rosbag2 says about a recording.\n\nProduced by `ros2 bag info` when a ROS 2 environment is on PATH (the\non-device watcher path), otherwise by parsing the `metadata.yaml` rosbag2\nitself writes beside every bag. Never a third-party bag reader \u2014 the source\nis always rosbag2's own CLI or its own metadata file.",
+        "properties": {
+          "compressed_size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Bytes actually stored in B2 for the session's splits.",
+            "title": "Compressed Size Bytes"
+          },
+          "compression_format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compression Format"
+          },
+          "compression_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compression Mode"
+          },
+          "compression_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compression Ratio"
+          },
+          "describe_source": {
+            "description": "\"ros2 bag info\", \"metadata.yaml\", or \"unavailable\".",
+            "title": "Describe Source",
+            "type": "string"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "message_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Count"
+          },
+          "original_size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Uncompressed size from rosbag2 metadata, when recorded.",
+            "title": "Original Size Bytes"
+          },
+          "ros2_available": {
+            "description": "True when the `ros2` CLI was found on PATH where describe ran.",
+            "title": "Ros2 Available",
+            "type": "boolean"
+          },
+          "ros_distro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ros Distro"
+          },
+          "serialization_format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serialization Format"
+          },
+          "storage_identifier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "rosbag2 storage plugin id, e.g. \"mcap\" or \"sqlite3\".",
+            "title": "Storage Identifier"
+          },
+          "topic_types": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Topic Types",
+            "type": "object"
+          },
+          "topics": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Topics",
+            "type": "array"
+          }
+        },
+        "required": [
+          "describe_source",
+          "ros2_available",
+          "ros_distro",
+          "storage_identifier",
+          "serialization_format",
+          "duration_seconds",
+          "message_count",
+          "topics",
+          "topic_types",
+          "compression_format",
+          "compression_mode",
+          "original_size_bytes",
+          "compressed_size_bytes",
+          "compression_ratio"
+        ],
+        "title": "DescribeSummary",
         "type": "object"
       },
       "FileMetadata": {
@@ -394,6 +752,117 @@
         "title": "HealthStatus",
         "type": "object"
       },
+      "OffloadPlan": {
+        "description": "The presigned-PUT plan for a session's splits, all under its own prefix.",
+        "properties": {
+          "prefix": {
+            "title": "Prefix",
+            "type": "string"
+          },
+          "robot": {
+            "title": "Robot",
+            "type": "string"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "splits": {
+            "items": {
+              "$ref": "#/components/schemas/OffloadPresignedSplit"
+            },
+            "title": "Splits",
+            "type": "array"
+          }
+        },
+        "required": [
+          "robot",
+          "session_id",
+          "prefix",
+          "splits"
+        ],
+        "title": "OffloadPlan",
+        "type": "object"
+      },
+      "OffloadPresignedSplit": {
+        "description": "A presigned PUT for one split, plus the headers the client must send.",
+        "properties": {
+          "expires_in": {
+            "title": "Expires In",
+            "type": "integer"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "headers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Headers",
+            "type": "object"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "filename",
+          "key",
+          "url",
+          "method",
+          "headers",
+          "expires_in"
+        ],
+        "title": "OffloadPresignedSplit",
+        "type": "object"
+      },
+      "OffloadRequest": {
+        "description": "The set of closed splits to offload for a session.",
+        "properties": {
+          "splits": {
+            "items": {
+              "$ref": "#/components/schemas/OffloadSplit"
+            },
+            "title": "Splits",
+            "type": "array"
+          }
+        },
+        "required": [
+          "splits"
+        ],
+        "title": "OffloadRequest",
+        "type": "object"
+      },
+      "OffloadSplit": {
+        "description": "One closed split the robot/browser wants to offload.",
+        "properties": {
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "size": {
+            "description": "Exact byte size; signed into the presigned PUT.",
+            "title": "Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "filename",
+          "size"
+        ],
+        "title": "OffloadSplit",
+        "type": "object"
+      },
       "PresignUploadRequest": {
         "description": "What the browser declares before uploading directly to B2.",
         "properties": {
@@ -459,6 +928,385 @@
           "expires_in"
         ],
         "title": "PresignUploadResponse",
+        "type": "object"
+      },
+      "PresignedUrl": {
+        "description": "A short-lived presigned GET URL (used to download the Parquet catalog).",
+        "properties": {
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "PresignedUrl",
+        "type": "object"
+      },
+      "ReplayManifest": {
+        "description": "Everything `ros2 bag play` needs to replay a session straight from B2.",
+        "properties": {
+          "expires_in": {
+            "title": "Expires In",
+            "type": "integer"
+          },
+          "robot": {
+            "title": "Robot",
+            "type": "string"
+          },
+          "ros_distro": {
+            "title": "Ros Distro",
+            "type": "string"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "storage_id_hint": {
+            "description": "rosbag2 storage plugin to replay with, e.g. \"mcap\" or \"sqlite3\".",
+            "title": "Storage Id Hint",
+            "type": "string"
+          },
+          "topic_set": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Topic Set",
+            "type": "array"
+          },
+          "urls": {
+            "items": {
+              "$ref": "#/components/schemas/ReplayUrl"
+            },
+            "title": "Urls",
+            "type": "array"
+          }
+        },
+        "required": [
+          "robot",
+          "session_id",
+          "ros_distro",
+          "topic_set",
+          "storage_id_hint",
+          "urls",
+          "expires_in"
+        ],
+        "title": "ReplayManifest",
+        "type": "object"
+      },
+      "ReplayRequest": {
+        "description": "Prepare a replay manifest; expiry is optional.",
+        "properties": {
+          "expiry_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Presigned-URL lifetime in seconds (default 3600).",
+            "title": "Expiry Seconds"
+          }
+        },
+        "title": "ReplayRequest",
+        "type": "object"
+      },
+      "ReplayUrl": {
+        "description": "A presigned GET for one split, for `ros2 bag play` to stream from B2.",
+        "properties": {
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "filename",
+          "key",
+          "url"
+        ],
+        "title": "ReplayUrl",
+        "type": "object"
+      },
+      "Session": {
+        "description": "A single rosbag2 recording session \u2014 the primary entity.\n\nOne session is the set of splits a robot's rosbag2 writes during one run,\nstored under `bags/<robot>/<session>/`, plus the `metadata.json` record this\nAPI keeps beside them.",
+        "properties": {
+          "compression": {
+            "description": "Requested compression, e.g. \"zstd\" or \"none\".",
+            "title": "Compression",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "describe_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set once the session has been described.",
+            "title": "Describe Source"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "prefix": {
+            "description": "B2 key prefix: bags/<robot>/<session>/.",
+            "title": "Prefix",
+            "type": "string"
+          },
+          "robot": {
+            "title": "Robot",
+            "type": "string"
+          },
+          "ros_distro": {
+            "title": "Ros Distro",
+            "type": "string"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "split_count": {
+            "title": "Split Count",
+            "type": "integer"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "topic_set": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Topic Set",
+            "type": "array"
+          },
+          "total_size_bytes": {
+            "title": "Total Size Bytes",
+            "type": "integer"
+          },
+          "total_size_human": {
+            "title": "Total Size Human",
+            "type": "string"
+          }
+        },
+        "required": [
+          "robot",
+          "session_id",
+          "ros_distro",
+          "topic_set",
+          "compression",
+          "tags",
+          "description",
+          "created_at",
+          "prefix",
+          "split_count",
+          "total_size_bytes",
+          "total_size_human",
+          "describe_source"
+        ],
+        "title": "Session",
+        "type": "object"
+      },
+      "SessionCreate": {
+        "description": "Start a new session (the record; splits arrive via the offload flow).",
+        "properties": {
+          "compression": {
+            "default": "zstd",
+            "description": "Compression rosbag2 used: \"zstd\", \"lz4\", or \"none\".",
+            "title": "Compression",
+            "type": "string"
+          },
+          "robot": {
+            "description": "Robot / vehicle id, e.g. robot-07.",
+            "title": "Robot",
+            "type": "string"
+          },
+          "ros_distro": {
+            "description": "ROS 2 distribution, e.g. \"jazzy\".",
+            "title": "Ros Distro",
+            "type": "string"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional session id. Generated from the timestamp when omitted.",
+            "title": "Session Id"
+          },
+          "topic_set": {
+            "description": "Topics this run is expected to record.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Topic Set",
+            "type": "array"
+          }
+        },
+        "required": [
+          "robot",
+          "ros_distro"
+        ],
+        "title": "SessionCreate",
+        "type": "object"
+      },
+      "SessionDetail": {
+        "description": "A session plus its splits, its rosbag2 describe summary, and its catalog row.",
+        "properties": {
+          "catalog_row": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CatalogRow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "describe": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DescribeSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "session": {
+            "$ref": "#/components/schemas/Session"
+          },
+          "splits": {
+            "items": {
+              "$ref": "#/components/schemas/SplitInfo"
+            },
+            "title": "Splits",
+            "type": "array"
+          }
+        },
+        "required": [
+          "session",
+          "splits",
+          "describe",
+          "catalog_row"
+        ],
+        "title": "SessionDetail",
+        "type": "object"
+      },
+      "SessionList": {
+        "description": "A filtered list of sessions.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "sessions": {
+            "items": {
+              "$ref": "#/components/schemas/Session"
+            },
+            "title": "Sessions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "sessions",
+          "count"
+        ],
+        "title": "SessionList",
+        "type": "object"
+      },
+      "SessionUpdate": {
+        "description": "Edit a session's human-owned fields. Both are optional; omit to leave as-is.",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          }
+        },
+        "title": "SessionUpdate",
+        "type": "object"
+      },
+      "SplitInfo": {
+        "description": "One closed rosbag2 split as stored in B2.",
+        "properties": {
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "size_human": {
+            "title": "Size Human",
+            "type": "string"
+          }
+        },
+        "required": [
+          "filename",
+          "key",
+          "size_bytes",
+          "size_human"
+        ],
+        "title": "SplitInfo",
         "type": "object"
       },
       "UploadStats": {
@@ -552,12 +1400,154 @@
     }
   },
   "info": {
-    "description": "Local API for the Vibe Coding Starter Kit template, providing file upload and management backed by Backblaze B2. This contract documents the template's local API, not a hosted public endpoint.",
-    "title": "Vibe Coding Starter Kit API",
+    "description": "Local API for Rosbag2 Cloud Offload: stream ROS 2 rosbag2 recordings off the robot into Backblaze B2, describe them from rosbag2's own metadata, and catalog every session in Parquet so any recording can be found and replayed with ros2 bag play from a presigned B2 URL. This contract documents the app's local API, not a hosted public endpoint.",
+    "title": "Rosbag2 Cloud Offload API",
     "version": "0.1.0"
   },
   "openapi": "3.1.0",
   "paths": {
+    "/catalog": {
+      "get": {
+        "description": "The session catalog, filtered. Reads catalog/catalog.parquet when built,\nelse derives rows live from the session records under bags/.",
+        "operationId": "catalog_endpoint_catalog_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "robot",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Robot"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "topic",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Topic"
+            }
+          },
+          {
+            "in": "query",
+            "name": "ros_distro",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ros Distro"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogRows"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Catalog Endpoint",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/catalog/download": {
+      "get": {
+        "description": "Presigned GET for catalog/catalog.parquet (built lazily if absent).",
+        "operationId": "download_catalog_endpoint_catalog_download_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresignedUrl"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Download Catalog Endpoint",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/catalog/rebuild": {
+      "post": {
+        "description": "Roll every session into catalog/catalog.parquet and return the summary.",
+        "operationId": "rebuild_catalog_endpoint_catalog_rebuild_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Rebuild Catalog Endpoint",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
     "/files": {
       "get": {
         "operationId": "list_files_endpoint_files_get",
@@ -1099,6 +2089,479 @@
         "summary": "Metrics",
         "tags": [
           "metrics"
+        ]
+      }
+    },
+    "/sessions": {
+      "get": {
+        "operationId": "list_sessions_endpoint_sessions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "robot",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Robot"
+            }
+          },
+          {
+            "in": "query",
+            "name": "ros_distro",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ros Distro"
+            }
+          },
+          {
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Since"
+            }
+          },
+          {
+            "in": "query",
+            "name": "topic",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Topic"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Sessions Endpoint",
+        "tags": [
+          "sessions"
+        ]
+      },
+      "post": {
+        "description": "Start a session: write its metadata.json record under bags/<robot>/<session>/.",
+        "operationId": "create_session_endpoint_sessions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Session Endpoint",
+        "tags": [
+          "sessions"
+        ]
+      }
+    },
+    "/sessions/{robot}/{session}": {
+      "delete": {
+        "description": "Delete a session, scoped strictly to its bags/<robot>/<session>/ prefix.",
+        "operationId": "delete_session_endpoint_sessions__robot___session__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "robot",
+            "required": true,
+            "schema": {
+              "title": "Robot",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "session",
+            "required": true,
+            "schema": {
+              "title": "Session",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Session Endpoint",
+        "tags": [
+          "sessions"
+        ]
+      },
+      "get": {
+        "operationId": "get_session_endpoint_sessions__robot___session__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "robot",
+            "required": true,
+            "schema": {
+              "title": "Robot",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "session",
+            "required": true,
+            "schema": {
+              "title": "Session",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Session Endpoint",
+        "tags": [
+          "sessions"
+        ]
+      },
+      "patch": {
+        "operationId": "update_session_endpoint_sessions__robot___session__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "robot",
+            "required": true,
+            "schema": {
+              "title": "Robot",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "session",
+            "required": true,
+            "schema": {
+              "title": "Session",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Session Endpoint",
+        "tags": [
+          "sessions"
+        ]
+      }
+    },
+    "/sessions/{robot}/{session}/describe": {
+      "post": {
+        "description": "Describe via rosbag2's metadata.yaml (ros2 bag info on-device); persist it.",
+        "operationId": "describe_endpoint_sessions__robot___session__describe_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "robot",
+            "required": true,
+            "schema": {
+              "title": "Robot",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "session",
+            "required": true,
+            "schema": {
+              "title": "Session",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Describe Endpoint",
+        "tags": [
+          "sessions"
+        ]
+      }
+    },
+    "/sessions/{robot}/{session}/offload": {
+      "post": {
+        "description": "Presigned-PUT plan for the session's closed splits, all under its prefix.",
+        "operationId": "offload_endpoint_sessions__robot___session__offload_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "robot",
+            "required": true,
+            "schema": {
+              "title": "Robot",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "session",
+            "required": true,
+            "schema": {
+              "title": "Session",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OffloadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OffloadPlan"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Offload Endpoint",
+        "tags": [
+          "sessions"
+        ]
+      }
+    },
+    "/sessions/{robot}/{session}/replay": {
+      "post": {
+        "description": "Presigned-GET manifest so `ros2 bag play` can stream the session from B2.",
+        "operationId": "replay_endpoint_sessions__robot___session__replay_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "robot",
+            "required": true,
+            "schema": {
+              "title": "Robot",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "session",
+            "required": true,
+            "schema": {
+              "title": "Session",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplayRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayManifest"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Replay Endpoint",
+        "tags": [
+          "sessions"
         ]
       }
     },

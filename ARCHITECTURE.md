@@ -4,19 +4,20 @@
 ## Components
 
 <!-- gen:begin arch-components -->
-A well-engineered full-stack foundation — dashboard, drag-and-drop upload and a file browser — with Backblaze B2 storage already wired in, so builders skip the boilerplate loop.
+Stream ROS 2 rosbag2 recordings off the robot into Backblaze B2, describe them from rosbag2's own metadata, and catalog every session in Parquet so any recording can be found and replayed with ros2 bag play from a presigned B2 URL.
 
-- **apps/web/** — Next.js 16, React 19, Tailwind v4, shadcn/ui, TanStack Query, Recharts
-  - File Upload (`/upload`) — drag-and-drop upload with real-time progress
-  - File Browser (`/files`) — list, preview, download, delete files
-  - Dashboard (`/`) — stats cards, upload chart, recent uploads
-  - Settings (`/settings`) — theme plus labelled demo preference fields
-- **services/api/** — FastAPI, Python 3.12+, boto3, Pydantic v2, Pillow, PyPDF2
+- **apps/web/** — Next.js 16 (App Router, React 19, Tailwind v4, shadcn/ui, TanStack Query)
+  - Continuous Bag Offload (`/upload`) — Presigned-PUT each closed rosbag2 split into bags/<robot>/<session>/ while recording continues; local copies deleted only after head_object confirms.
+  - Session Catalog & Search (`/catalog`) — Parquet catalog keyed by robot, date, topic set and ROS distro; sample-scoped explorer over the bags/ namespace.
+  - Bucket Explorer (`/files`) — Full-bucket browse across bags/ and catalog/, kept from the starter kit.
+  - Offload Dashboard (`/`) — Offload volume, session count, and compression-ratio stats over the bags/ prefix.
+- **services/api/** — FastAPI (Python 3.12+, boto3, Pydantic v2, pyarrow)
   - REST API for every operation the frontend consumes, exported to `docs/api/openapi.json`
   - Backblaze B2 (S3-compatible API) access isolated in the `repo/` layer
-  - Metadata Extraction — image dimensions, EXIF, PDF info, checksums
+  - Bag Describe — ros2 bag info when a ROS 2 env is present, else parse rosbag2 metadata.yaml; writes metadata.json and records compression sizes.
+  - Replay via Presigned URL — Presigned GET manifest streams a session's splits for ros2 bag play against B2.
   - Structured JSON logging with request tracing, plus `/health` and Prometheus `/metrics`
-- **packages/shared/** — TypeScript types generated from the API contract by `pnpm gen:api`, consumed by `apps/web/` as a workspace dependency (pnpm workspaces)
+- **packages/shared/** — TypeScript types generated from the API contract by `pnpm gen:api`, consumed by `apps/web/` as a workspace dependency (pnpm)
 <!-- gen:end arch-components -->
 
 ## Backend Layering
@@ -84,12 +85,12 @@ services/api/
   share one origin — the web app at `/`, the API under `/api`. The repo-root
   `vercel.json` declares both services and routes `/api/*` to the API service;
   the Vercel-only `services/api/index.py` strips the `/api` prefix so FastAPI
-  keeps its native paths (`/health`, `/files`, …). Uploads go directly from the
-  browser to B2 via a presigned PUT (see
-  [File Upload](docs/features/file-upload.md)), so they bypass the Function's
-  4.5 MB payload ceiling entirely — the bucket must allow the deploy origin in
-  its CORS. A two-separate-Projects alternative and the full delivery contract
-  live in [infra/vercel/README.md](infra/vercel/README.md).
+  keeps its native paths (`/health`, `/files`, …). Bag splits are offloaded
+  directly from the browser (or the on-device watcher) to B2 via a presigned PUT
+  (see [Continuous Bag Offload](docs/features/bag-offload.md)), so they bypass
+  the Function's 4.5 MB payload ceiling entirely — the bucket must allow the
+  deploy origin in its CORS. A two-separate-Projects alternative and the full
+  delivery contract live in [infra/vercel/README.md](infra/vercel/README.md).
 
 External provisioning and deployment remain explicit user-approved actions.
 
@@ -97,22 +98,22 @@ External provisioning and deployment remain explicit user-approved actions.
 
 <!-- gen:begin arch-data-stores -->
 - **Backblaze B2 (S3-compatible API)** — the only data store; there is no application database
-  - Every object this app writes lives under the `uploads/` key prefix of one bucket
+  - Every object this app writes lives under the `bags/` key prefix of one bucket
   - Listing, per-key metadata and presigned URLs all come from the S3 surface below
-  - The primary entity is `FileMetadata`; one file is one object
+  - The primary entity is `Session`; one session is one object
 <!-- gen:end arch-data-stores -->
 
 ## External Services
 
 <!-- gen:begin arch-external-services -->
 - **Backblaze B2 (S3-compatible API)** — reached only through `services/api/app/repo/`, using:
-  - `put_object` — store an uploaded object
-  - `presigned PUT` — the browser uploads bytes directly to B2, bypassing the Function payload cap
-  - `list_objects_v2` — the shared full-bucket listing behind the file list and the stats cards
-  - `head_object` — cheap per-key metadata, and the /health connectivity probe
-  - `get_object` — re-read bytes to recompute rich metadata on demand
-  - `presigned GET` — download and inline preview URLs
-  - `delete_object` — remove an object
+  - `put_object` — Write each session's metadata.json and roll the Parquet catalog under catalog/.
+  - `presigned PUT (put_object)` — Direct robot/browser upload of each closed bag split under bags/<robot>/<session>/.
+  - `list_objects_v2` — Enumerate a session's splits and discover sessions under the bags/ prefix for the catalog.
+  - `head_object` — Confirm a split landed before the watcher deletes the local copy, and read split sizes.
+  - `get_object` — Read rosbag2 metadata.yaml and the Parquet catalog for describe and query.
+  - `presigned GET (get_object)` — Stream bag splits for ros2 bag play replay and download the catalog.
+  - `delete_object` — Delete a session's bags, scoped strictly to its bags/<robot>/<session>/ prefix.
 <!-- gen:end arch-external-services -->
 
 ## Trust Boundaries
@@ -123,12 +124,12 @@ See [docs/SECURITY.md](docs/SECURITY.md) for full security documentation.
 - **API -> B2** — authenticated via application keys, signature v4
 - **Client -> B2** — presigned URLs for download (10-min expiry, forced attachment)
 
-## Data Flows
-
-- **Upload**: Browser -> `POST /upload/presign` (API validates the declared file + signs a PUT) -> Browser PUTs bytes **directly to B2** -> `POST /upload/verify` (API HEADs + Range-sniffs the stored object) -> response
-- **List**: Browser -> `GET /files` -> service calls repo -> returns file list
-- **Download**: Browser -> `GET /files/{key}/download` -> service validates key -> repo generates presigned URL -> browser downloads
-- **Delete**: Browser -> `DELETE /files/{key}` -> service validates key -> repo deletes from B2
+- **Offload**: Browser/watcher -> `POST /sessions/{robot}/{session}/offload` (API presigns a PUT per split, keys scoped to `bags/<robot>/<session>/`) -> client PUTs each split **directly to B2** -> the watcher confirms with `head_object` before deleting the local copy
+- **Describe**: `POST /sessions/{robot}/{session}/describe` -> service reads rosbag2's `metadata.yaml` from B2 (or `ros2 bag info` on-device) -> writes the summary into the session's `metadata.json`
+- **Catalog**: `GET /catalog` reads `catalog/catalog.parquet` (or derives live from session records); `POST /catalog/rebuild` rolls every session into Parquet via `put_object`; `GET /catalog/download` presigns a GET for the file
+- **Replay**: `POST /sessions/{robot}/{session}/replay` -> repo presigns a GET per split -> client streams them with `ros2 bag play`
+- **Delete**: `DELETE /sessions/{robot}/{session}` -> service lists the prefix and deletes each object, scoped strictly to `bags/<robot>/<session>/`
+- **Bucket browse**: `GET /files` -> shared full-bucket listing across `bags/` and `catalog/` -> `DELETE /files-by-key` removes one object
 
 ## Observability
 
@@ -158,6 +159,9 @@ still in step.
 | --- | --- | --- |
 | `DELETE /files-by-key` | `DeleteFileResponse` | `fileByKeyDelete` |
 | `DELETE /files/{key}` | `DeleteFileResponse` | `legacyFileDelete` |
+| `DELETE /sessions/{robot}/{session}` | `DeleteResult` | `sessionDelete` |
+| `GET /catalog` | `CatalogRows` | `catalog` |
+| `GET /catalog/download` | `PresignedUrl` | `catalogDownload` |
 | `GET /files` | `FileMetadata[]` | `files` |
 | `GET /files-by-key/detail` | `FileMetadataDetail` | `fileByKeyDetail` |
 | `GET /files-by-key/download` | `FileUrlResponse` | `fileByKeyDownload` |
@@ -170,6 +174,14 @@ still in step.
 | `GET /files/stats/activity` | `DailyUploadCount[]` | `uploadActivity` |
 | `GET /health` | `HealthStatus` | `health` |
 | `GET /metrics` | — | _server-only_ |
+| `GET /sessions` | `SessionList` | `sessions` |
+| `GET /sessions/{robot}/{session}` | `SessionDetail` | `sessionDetail` |
+| `PATCH /sessions/{robot}/{session}` | `Session` | `sessionUpdate` |
+| `POST /catalog/rebuild` | `CatalogSummary` | `catalogRebuild` |
+| `POST /sessions` | — | `sessionCreate` |
+| `POST /sessions/{robot}/{session}/describe` | `SessionDetail` | `sessionDescribe` |
+| `POST /sessions/{robot}/{session}/offload` | `OffloadPlan` | `sessionOffload` |
+| `POST /sessions/{robot}/{session}/replay` | `ReplayManifest` | `sessionReplay` |
 | `POST /upload/presign` | `PresignUploadResponse` | `uploadPresign` |
 | `POST /upload/verify` | `FileUploadResponse` | `uploadVerify` |
 <!-- gen:end arch-api-contract -->
@@ -204,11 +216,12 @@ Generated — **never hand-edit**; change the source and re-run the command:
 ## Core Features
 
 <!-- gen:begin arch-core-features -->
-- [File Upload](docs/features/file-upload.md) — drag-and-drop upload with real-time progress
-- [File Browser](docs/features/file-browser.md) — list, preview, download, delete files
-- [Dashboard](docs/features/dashboard.md) — stats cards, upload chart, recent uploads
-- [Metadata Extraction](docs/features/metadata-extraction.md) — image dimensions, EXIF, PDF info, checksums
-- [Settings](docs/features/settings.md) — theme plus labelled demo preference fields
+- [Continuous Bag Offload](docs/features/bag-offload.md) — Presigned-PUT each closed rosbag2 split into bags/<robot>/<session>/ while recording continues; local copies deleted only after head_object confirms.
+- [Session Catalog & Search](docs/features/session-catalog.md) — Parquet catalog keyed by robot, date, topic set and ROS distro; sample-scoped explorer over the bags/ namespace.
+- [Bag Describe](docs/features/bag-describe.md) — ros2 bag info when a ROS 2 env is present, else parse rosbag2 metadata.yaml; writes metadata.json and records compression sizes.
+- [Replay via Presigned URL](docs/features/replay-streaming.md) — Presigned GET manifest streams a session's splits for ros2 bag play against B2.
+- [Bucket Explorer](docs/features/bucket-explorer.md) — Full-bucket browse across bags/ and catalog/, kept from the starter kit.
+- [Offload Dashboard](docs/features/dashboard.md) — Offload volume, session count, and compression-ratio stats over the bags/ prefix.
 <!-- gen:end arch-core-features -->
 
 ## References

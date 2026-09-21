@@ -14,6 +14,7 @@ from app.repo.b2_upload import (
     get_object_head_bytes,
     invalidate_listing,
 )
+from app.repo.catalog_store import parquet_bytes_to_rows, rows_to_parquet_bytes
 from app.repo.counter import get_download_count, increment_download_count
 
 __all__ = [
@@ -29,6 +30,8 @@ __all__ = [
     "increment_download_count",
     "invalidate_listing",
     "list_files",
+    "parquet_bytes_to_rows",
     "prewarm_listing",
+    "rows_to_parquet_bytes",
     "upload_file",
 ]
