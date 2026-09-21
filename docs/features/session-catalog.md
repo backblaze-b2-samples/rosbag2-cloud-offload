@@ -33,7 +33,7 @@ from the full-bucket [Bucket Explorer](bucket-explorer.md).
 ## Flow
 - `/catalog` lists rows (reads the built Parquet when present, else derives live from session records) and supports free-text search across robot, session, distro, and topic
 - "Start session" opens a create form (the settings-form exemplar: ROS distro and compression are selectors with safe-default hints)
-- "Rebuild catalog" rolls every session into `catalog/catalog.parquet`
+- "Rebuild catalog" rolls every session into `catalog/catalog.parquet` — also auto-run once per browser offload batch (after describe) so a freshly offloaded session lands in the catalog without a manual click (see [Continuous Bag Offload](bag-offload.md))
 - "Download .parquet" presigns a GET so you can query the catalog with your own tools
 
 ## Edge Cases

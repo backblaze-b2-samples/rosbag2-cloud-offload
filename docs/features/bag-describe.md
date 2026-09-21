@@ -10,7 +10,7 @@ topics and types, serialization format, storage plugin, and compression figures
 — is written to the session's `metadata.json` and shown on the session detail.
 
 ## Used By
-- UI: session detail (`/catalog/[robot]/[session]`) — the "Run describe" action
+- UI: session detail (`/catalog/[robot]/[session]`) — the "Run describe" action; also auto-run once per browser offload batch by the offload panel (see [Continuous Bag Offload](bag-offload.md))
 - API: `POST /sessions/{robot}/{session}/describe`
 - CLI: `services/api/scripts/offload_watcher.py` (prefers `ros2 bag info` on-device)
 

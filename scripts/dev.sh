@@ -13,9 +13,12 @@ fi
 
 export API_PORT
 export NEXT_PUBLIC_API_URL="http://localhost:$API_PORT"
-# Dev-only: accept any localhost:<port> origin so the web side works
-# regardless of which port `next dev` lands on. Never set in prod.
-export API_CORS_ORIGIN_REGEX='^http://localhost:[0-9]+$'
+# Dev-only: accept any localhost:<port> OR 127.0.0.1:<port> origin so the web
+# side works regardless of which port `next dev` lands on, and regardless of
+# whether the browser/agent resolved the host as `localhost` or `127.0.0.1`
+# (macOS and sandbox/AI-agent environments commonly use 127.0.0.1). Mirrors the
+# `allowedDevOrigins` in apps/web/next.config.ts. Never set in prod.
+export API_CORS_ORIGIN_REGEX='^http://(localhost|127\.0\.0\.1):[0-9]+$'
 
 exec pnpm exec concurrently \
   --kill-others-on-fail \

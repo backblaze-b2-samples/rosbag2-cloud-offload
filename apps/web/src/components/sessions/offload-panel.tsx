@@ -2,13 +2,14 @@
 
 import { useId, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, CloudUpload, XCircle } from "lucide-react";
+import { CheckCircle2, CloudUpload, Loader2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ApiError, uploadSplit } from "@/lib/api-client";
-import { qk, sessionDetailKey } from "@/lib/queries";
+import { chainOffloadFollowUps } from "@/lib/offload-chain";
+import { qk, sessionDetailKey, useDescribeSession, useRebuildCatalog } from "@/lib/queries";
 import { humanizeBytes } from "@/lib/utils";
 
 interface Item {
@@ -26,11 +27,16 @@ export function OffloadPanel({ robot, session }: { robot: string; session: strin
   const [items, setItems] = useState<Item[]>([]);
   const [dragging, setDragging] = useState(false);
   const qc = useQueryClient();
+  // Same mutations the manual "Run describe" (DescribeCard) and "Rebuild
+  // catalog" (/catalog) buttons use — reused here to auto-chain the follow-ups.
+  const describe = useDescribeSession(robot, session);
+  const rebuild = useRebuildCatalog();
 
   const patch = (id: string, next: Partial<Item>) =>
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...next } : it)));
 
   const offload = async (files: File[]) => {
+    let succeeded = 0;
     for (const file of files) {
       const id = `${file.name}-${file.size}-${crypto.randomUUID()}`;
       setItems((prev) => [
@@ -40,6 +46,7 @@ export function OffloadPanel({ robot, session }: { robot: string; session: strin
       try {
         await uploadSplit(robot, session, file, (percent) => patch(id, { percent }));
         patch(id, { percent: 100, status: "done" });
+        succeeded += 1;
       } catch (err) {
         const message = err instanceof ApiError ? err.message : "Offload failed";
         patch(id, { status: "error", error: message });
@@ -51,6 +58,26 @@ export function OffloadPanel({ robot, session }: { robot: string; session: strin
     qc.invalidateQueries({ queryKey: [...qk.all, "sessions"] });
     qc.invalidateQueries({ queryKey: [...qk.all, "catalog"] });
     qc.invalidateQueries({ queryKey: [...qk.all, "files"] });
+
+    // Auto-chain the rest of the pipeline once per batch so a first-time user
+    // reaches a described, cataloged session without hunting for two more
+    // buttons on two more pages. `mutateAsync` still fires each mutation's own
+    // cache updates (describe writes the session detail; both invalidate the
+    // catalog). The in-progress line below (describe/rebuild `isPending`) is
+    // the running feedback. Skipped when nothing landed; guarded so a failed
+    // stage surfaces its message instead of crashing.
+    try {
+      const chained = await chainOffloadFollowUps(succeeded, {
+        describe: () => describe.mutateAsync(),
+        rebuild: () => rebuild.mutateAsync(),
+      });
+      if (chained) {
+        toast.success("Described and added to the searchable catalog");
+      }
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : "Follow-up step failed";
+      toast.error("Offloaded, but cataloging did not finish", { description: message });
+    }
   };
 
   const onPick = (list: FileList | null) => {
@@ -132,6 +159,15 @@ export function OffloadPanel({ robot, session }: { robot: string; session: strin
               </li>
             ))}
           </ul>
+        )}
+
+        {(describe.isPending || rebuild.isPending) && (
+          <p className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+            {describe.isPending
+              ? "Describing from rosbag2…"
+              : "Rolling this session into the catalog…"}
+          </p>
         )}
       </CardContent>
     </Card>

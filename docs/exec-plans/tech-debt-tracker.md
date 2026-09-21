@@ -60,3 +60,10 @@ Known tech debt items. Agents update this when they discover or create tech debt
 | Custom `FileNotFoundError` shadowed the built-in | Renamed to `FileNotFoundServiceError` |
 | Dropzone accepted any file type client-side | `accept` allow-list mirroring backend `ALLOWED_TYPES` (tested for drift) |
 | No test harness for feature specs | pytest suite across upload, files, activity, errors, validation, rate limit, pagination |
+
+## 2026-09-21 — verify
+
+- `/upload` catalog-rebuild stage — indeterminate spinner + static "Rolling this session into the catalog…" held ~15–20s against a bucket with many accumulated sessions; the progress value stayed null and the stage text never advanced → add a determinate or step-counted progress indicator (or a "may take a moment for large buckets" hint) for the catalog rebuild. Fine for a first-time user's small bucket (~6s) but degrades as a fleet accumulates sessions (`.local/verify/B/07-rolling-catalog.png`)
+- session detail Bag Describe card — surfaces the total message count (7,800) and the 4 topic names but not the per-topic message counts (1800/900/3600/1500) that `metadata.yaml` carries → expose the per-topic message counts in the describe card (`.local/verify/C/03-describe-card.png`)
+- `/catalog` Compression column — shows rosbag2's own metadata `compression_format` (zstd), which can differ from a session's user-declared compression (e.g. `none`, shown on the session-detail card); consistent by design but reads as contradictory across surfaces → label/disambiguate declared-vs-actual compression (`.local/verify/C/12-catalog-both.png`)
+- `/catalog` — a one-time, non-reproducing React hydration-mismatch console warning (SSR/date rendering) appeared on one pass and did not recur on a clean pass → low-confidence; check SSR date/formatting if it resurfaces (no stable shot — non-reproducing)

@@ -46,13 +46,20 @@ class Settings(BaseSettings):
     # surface in production.
     enable_docs: bool = True
     # Explicit allowlist by default — covers Next on :3000 and the
-    # fallback :3001 it picks if 3000 is busy. Production deploys should
-    # override with the exact frontend origin.
-    api_cors_origins: str = "http://localhost:3000,http://localhost:3001"
+    # fallback :3001 it picks if 3000 is busy, under BOTH the `localhost` and
+    # `127.0.0.1` host spellings (macOS and sandbox/AI-agent environments
+    # commonly resolve to 127.0.0.1; apps/web/next.config.ts and
+    # apps/web/playwright.config.ts drive the app over 127.0.0.1). Production
+    # deploys should override with the exact frontend origin.
+    api_cors_origins: str = (
+        "http://localhost:3000,http://localhost:3001,"
+        "http://127.0.0.1:3000,http://127.0.0.1:3001"
+    )
     # Optional dev-only escape hatch: a regex that matches additional
     # allowed origins. Empty by default — set this to e.g.
-    # `^http://localhost:\d+$` to accept any localhost port without
-    # listing each one. NEVER ship this to production.
+    # `^http://(localhost|127\.0\.0\.1):\d+$` to accept any localhost /
+    # 127.0.0.1 port without listing each one (this is exactly what
+    # scripts/dev.sh exports). NEVER ship this to production.
     api_cors_origin_regex: str = ""
 
     # Upload limits
