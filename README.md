@@ -25,6 +25,28 @@ app's own features instead of rebuilding the same shell. Storage is
 > **Deploy your own in one click** → [Deploy to Vercel](#deploying-to-vercel). One project, one origin, no CORS to wire up.
 <!-- gen:end readme-screenshots -->
 
+## What it looks like
+
+**Offload Dashboard** — fleet-wide offload metrics (sessions, robots, objects in bucket, storage used) with a recent-sessions table.
+
+![Offload dashboard with fleet metrics and recent sessions](docs/images/dashboard.png)
+
+**Offload** — pick a target session and stream closed rosbag2 splits straight into `bags/<robot>/<session>/` on B2.
+
+![Offload page with target-session selector](docs/images/offload.png)
+
+**Session Catalog** — every offloaded recording under `bags/`, with distro, topic count, split count, size, and compression per session.
+
+![Session catalog listing all offloaded recordings](docs/images/catalog.png)
+
+**Catalog Search** — filter the catalog by robot, session, ROS distro, or topic.
+
+![Catalog filtered to a single robot's sessions](docs/images/catalog-search.png)
+
+**Session Detail** — a single session expanded: rosbag2 describe (topics, messages, duration), the split files, presigned-URL replay, and edit/delete controls.
+
+![Session detail with describe output, splits, and replay](docs/images/session-detail.png)
+
 ## Quick Start
 
 You need: Node.js >= 20, pnpm >= 10, Python >= 3.12, and a free **[Backblaze B2 account](https://www.backblaze.com/sign-up/ai-cloud-storage?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-rosbag2-cloud-offload)**.
