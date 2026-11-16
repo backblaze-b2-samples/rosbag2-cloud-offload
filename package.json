@@ -31,7 +31,7 @@
     "test:verify": "pnpm --filter @rosbag2-cloud-offload/web exec playwright test --project=verify"
   },
   "devDependencies": {
-    "concurrently": "^9.1.0"
+    "concurrently": "^10.0.5"
   },
   "pnpm": {
     "overrides": {
